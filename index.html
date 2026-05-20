@@ -260,6 +260,11 @@
           class="w-full p-4 rounded-2xl border border-orange-200"></textarea>
           
           <div>
+            <input
+id="expenseDate"
+type="date"
+class="w-full p-4 rounded-2xl border border-orange-200"
+/>
 
 <label class="font-semibold block mb-2">
 อาการล่าสุด
@@ -314,13 +319,54 @@ class="w-full bg-green-500 text-white py-4 rounded-2xl">
       </div>
 
       <!-- UPDATE -->
-      <button
-        onclick="updateFinance()"
-        class="w-full bg-orange-500 hover:bg-orange-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
+<textarea
+id="expenseDetail"
+rows="6"
+class="w-full p-4 rounded-2xl border border-orange-200">
+</textarea>
 
-        💾 บันทึกข้อมูล
+<div>
 
-      </button>
+<label class="font-semibold block mb-2">
+อาการน้องวันนี้
+</label>
+
+<input
+id="catDate"
+type="date"
+class="w-full p-4 rounded-2xl border border-orange-200"
+/>
+
+<textarea
+id="catText"
+rows="4"
+placeholder="วันนี้น้องเป็นยังไง"
+class="w-full p-4 rounded-2xl border border-orange-200 mt-3">
+</textarea>
+
+<input
+id="catImage"
+type="file"
+accept="image/*"
+class="mt-3"
+/>
+
+<button
+onclick="saveCatUpdate()"
+class="w-full bg-orange-500 text-white py-4 rounded-2xl mt-3">
+
+📸 บันทึกอาการรายวัน
+
+</button>
+
+</div>
+
+<button
+onclick="updateFinance()">
+
+💾 บันทึกข้อมูล
+
+</button>
 
       <!-- TOGGLE -->
       <button
@@ -426,19 +472,16 @@ class="w-full bg-green-500 text-white py-4 rounded-2xl">
 
     <div class="bg-orange-50 p-6">
 
-      <h2 class="text-3xl font-bold">
-        📋 รายการค่ารักษา
-      </h2>
+<h2 class="text-3xl font-bold">
+📋 รายละเอียดค่าใช้จ่าย
+</h2>
 
     </div>
 
 <div
 id="catHistory"
 class="p-8 space-y-4">
-</div>
-
-        id="expenseList"
-        class="whitespace-pre-line text-lg leading-relaxed text-gray-700">
+<div id="expenseList"></div>
 
 - ค่ายาฆ่าเชื้อ 1,200 บาท
 - ค่าล้างตา 800 บาท
