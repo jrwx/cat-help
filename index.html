@@ -499,9 +499,13 @@ slipsCollectionRef.onSnapshot((snapshot) => {
     const docId = slipData.id;
     const dateStr = slipData.timestamp ? new Date(slipData.timestamp).toLocaleString('th-TH') : "ไม่ระบุเวลา";
     const amtStr = slipData.amount ? Number(slipData.amount).toLocaleString() + " บาท" : "ไม่ระบุ";
-    const donorName = slipData.donorName ? slipData.donorName : '<span class="text-gray-400 italic">คุณผู้ใจดี</span>';
+    const donorName = slipData.donorName ? slipData.donorName : 'คุณผู้ใจดี';
 
-    // ตรวจสอบว่ามีรูปภาพหรือไม่ ถ้าไม่มีให้แสดงสถานะแทน
+    // [จุดแก้ไขสำคัญ] หากมีไฟล์รูปสลิปแสดงว่าเป็นคนทางบ้าน ให้ใส่ป้ายสีเทาเข้ม (bg-slate-600) ไว้หน้าชื่อผู้บริจาค
+    const fromHomeBadge = slipData.image 
+      ? `<span class="inline-block bg-slate-600 text-white text-[11px] font-bold px-2 py-0.5 rounded mr-1.5 tracking-wide">ทางบ้าน</span>`
+      : "";
+
     const receiptHtml = slipData.image 
       ? `<button onclick="openImageModal('${docId}')" class="block focus:outline-none" title="คลิกเพื่อขยายรูปสลิป">
             <img src="${slipData.image}" class="w-16 h-20 object-cover rounded-lg border border-slate-200 shadow-sm hover:scale-110 cursor-zoom-in transition" />
@@ -511,7 +515,7 @@ slipsCollectionRef.onSnapshot((snapshot) => {
     html += `
       <tr class="hover:bg-slate-50 transition">
         <td class="p-3 text-gray-600 font-medium">${dateStr}</td>
-        <td class="p-3 text-gray-800 font-semibold">${donorName}</td>
+        <td class="p-3 text-gray-800 font-semibold flex items-center h-full pt-10">${fromHomeBadge}${donorName}</td>
         <td class="p-3 text-green-600 font-bold">${amtStr}</td>
         <td class="p-3">${receiptHtml}</td>
         <td class="p-3 text-gray-700 max-w-xs break-words">${slipData.message || '<span class="text-gray-300">- ไม่ระบุข้อความ -</span>'}</td>
@@ -631,7 +635,7 @@ function handleAdminAuth() {
     document.getElementById("ownerPanel").classList.add("hidden");
     document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
     document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
-    if (labelEl) labelEl.innerHTML = "🖼️ เลือกไฟล์รูปภาพสลิป *"; // ปรับคำแนะนำกลับเป็นบังคับ
+    if (labelEl) labelEl.innerHTML = "🖼️ เลือกไฟล์รูปภาพสลิป *"; 
     alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
     renderFinanceTable(); 
     renderTimelineFromDocs(); 
@@ -646,7 +650,7 @@ function handleAdminAuth() {
       document.getElementById("ownerPanel").classList.remove("hidden");
       document.getElementById("loginBtn").innerHTML = "🚪 Logout (ผู้ดูแล)";
       document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
-      if (labelEl) labelEl.innerHTML = "🖼️ เลือกไฟล์รูปภาพสลิป (เฉพาะ Owner: ไม่ต้องเลือกก็ได้)"; // บอกให้รู้ว่าเว้นได้
+      if (labelEl) labelEl.innerHTML = "🖼️ เลือกไฟล์รูปภาพสลิป (เฉพาะ Owner: ไม่ต้องเลือกก็ได้)"; 
       alert("🔓 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณผู้ดูแลระบบครับ");
       renderFinanceTable(); 
       renderTimelineFromDocs(); 
@@ -774,7 +778,6 @@ async function submitDonationSlip() {
     return;
   }
 
-  // [จุดแก้ไขสำคัญ] เช็กเงื่อนไขการแนบสลิป: ถ้าไม่ใช่ Owner และยังไม่ได้เลือกไฟล์ ให้บล็อกทันที
   const hasFile = fileInput.files && fileInput.files.length > 0;
   if (!isOwnerLoggedIn && !hasFile) {
     alert("❌ กรุณาเลือกไฟล์รูปภาพหลักฐานสลิปด้วยครับ");
@@ -785,7 +788,6 @@ async function submitDonationSlip() {
   submitBtn.innerHTML = "⏳ กำลังส่งหลักฐาน...";
 
   try {
-    // ถ้ามีไฟล์ให้แปลงเป็น Base64 ถ้าไม่มี (ในกรณี Owner) ให้ส่งเป็น null
     let compressedSlipBase64 = null;
     if (hasFile) {
       compressedSlipBase64 = await compressAndResizeImage(fileInput.files[0]);
@@ -796,18 +798,16 @@ async function submitDonationSlip() {
     const thaiMonthsShort = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
     const formattedThaiDate = `${dateObj.getDate()} ${thaiMonthsShort[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
 
-    // 1. บันทึกลงคิวตรวจสอบสลิป (slips collection)
     await slipsCollectionRef.add({
       donorName: donorNameVal || "",
       amount: amountVal,
-      image: compressedSlipBase64, // จะเป็น Base64 หรือ null ก็ได้
+      image: compressedSlipBase64, 
       message: msgInput.value.trim(),
       timestamp: nowTimestamp
     });
 
-    // 2. จัดรูปแบบข้อความแสดงในตารางรายรับ-รายจ่าย
     let displayDonorName = donorNameVal ? `คุณ ${donorNameVal}` : "คุณผู้ใจดี";
-    if (isOwnerLoggedIn && !donorNameVal) {
+    if (isOwnerLoggedIn && !hasFile) {
       displayDonorName = "Owner (บันทึกแทน)";
     }
     
@@ -816,7 +816,6 @@ async function submitDonationSlip() {
       commentStr += ` - "${msgInput.value.trim()}"`;
     }
 
-    // 3. บันทึกลงสมุดบัญชีรายรับ-รายจ่ายทันที (finance collection)
     await financeCollectionRef.add({
       date: formattedThaiDate,
       type: "income",
