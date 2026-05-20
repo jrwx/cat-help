@@ -23,6 +23,22 @@
       background:rgba(255,255,255,.75);
       backdrop-filter:blur(12px);
     }
+    /* ปรับแต่ง Scrollbar ทุกกล่องให้สวยงาม กระชับ ไม่รกสายตา */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
   </style>
 </head>
 
@@ -148,10 +164,10 @@
 
       <div class="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
         <h4 class="font-bold text-slate-700 text-lg">📋 รายการสลิปบริจาคที่ส่งเข้ามา (เก็บประวัติที่เดิม)</h4>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse bg-white rounded-xl overflow-hidden shadow-sm">
-            <thead>
-              <tr class="bg-slate-200 text-slate-700 text-sm">
+        <div class="overflow-x-auto max-h-[350px] overflow-y-auto border border-slate-200 rounded-xl custom-scrollbar">
+          <table class="w-full text-left border-collapse bg-white">
+            <thead class="sticky top-0 bg-slate-200 z-10 shadow-sm">
+              <tr class="text-slate-700 text-sm">
                 <th class="p-3 font-semibold">วัน-เวลาที่ส่ง</th>
                 <th class="p-3 font-semibold">ชื่อผู้บริจาค</th>
                 <th class="p-3 font-semibold">จำนวนเงิน</th>
@@ -212,7 +228,7 @@
       <div class="bg-orange-50 p-6">
         <h2 class="text-3xl font-bold">🏥 บันทึกอาการน้องแมว</h2>
       </div>
-      <div id="timelineContainer" class="p-8 space-y-6 max-h-[600px] overflow-y-auto">
+      <div id="timelineContainer" class="p-8 space-y-6 max-h-[350px] overflow-y-auto custom-scrollbar">
         <p class="text-gray-400 text-center">กำลังโหลดข้อมูลไทม์ไลน์...</p>
       </div>
     </div>
@@ -225,10 +241,10 @@
       <h2 class="text-3xl font-bold">📊 บันทึกรายรับ - รายจ่ายค่ารักษา (อัปเดตวันต่อวัน)</h2>
     </div>
     <div class="p-8">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse bg-white rounded-xl overflow-hidden">
-          <thead>
-            <tr class="bg-orange-100 text-orange-800 text-base border-b border-orange-200">
+      <div class="overflow-x-auto max-h-[350px] overflow-y-auto border border-gray-100 rounded-xl custom-scrollbar">
+        <table class="w-full text-left border-collapse bg-white">
+          <thead class="sticky top-0 bg-orange-100 z-10 shadow-sm">
+            <tr class="text-orange-800 text-base border-b border-orange-200">
               <th class="p-4 font-semibold">วันที่</th>
               <th class="p-4 font-semibold">รายการรายละเอียด</th>
               <th class="p-4 font-semibold text-center">หลักฐาน</th>
@@ -392,13 +408,18 @@ function renderFinanceTable() {
         </td>`
       : "";
 
+    let detailDisplay = item.detail;
+    if (item.receiptImage && !detailDisplay.includes("[ ทางบ้าน ]")) {
+      detailDisplay = `<span class="inline-block bg-slate-600 text-white text-[11px] font-bold px-1.5 py-0.5 rounded mr-1.5 tracking-wide shadow-sm">[ ทางบ้าน ]</span> ` + detailDisplay;
+    }
+
     html += `
       <tr class="hover:bg-orange-50/30 transition text-sm md:text-base">
         <td class="p-4 font-medium text-gray-500 whitespace-nowrap">${item.date}</td>
-        <td class="p-4 text-gray-800 font-medium break-all">${item.detail}</td>
-        <td class="p-4 text-center">${receiptHtml}</td>
-        <td class="p-4 text-right text-green-600 font-bold">${isIncome ? '+' + amtStr : '-'}</td>
-        <td class="p-4 text-right text-red-500 font-bold">${!isIncome ? '-' + amtStr : '-'}</td>
+        <td class="p-4 text-gray-800 font-medium break-all align-middle">${detailDisplay}</td>
+        <td class="p-4 text-center align-middle">${receiptHtml}</td>
+        <td class="p-4 text-right text-green-600 font-bold align-middle">${isIncome ? '+' + amtStr : '-'}</td>
+        <td class="p-4 text-right text-red-500 font-bold align-middle">${!isIncome ? '-' + amtStr : '-'}</td>
         ${actionCellHtml}
       </tr>
     `;
@@ -441,12 +462,12 @@ async function deleteTransaction(itemId) {
     return;
   }
 
-  if (confirm("⚠️ ยืนยันลบรายการนี้ใช่ไหมครับ? ข้อมูลเงินของการ์ดรายรับ/คงเหลือ ด้านบนจะถูกหักลบและปรับปรุงทันทีกระทบแบบ Realtime")) {
+  if (confirm("⚠️ ยืนยันลบรายการนี้ใช่ไหมครับ? ข้อมูลเงินจะถูกปรับปรุงทันที")) {
     try {
       await financeCollectionRef.doc(itemId).delete();
-      alert("🗑️ ลบรายการเงินออกจากบัญชี และคำนวณยอดเงินรวมใหม่เรียบร้อยแล้วครับ!");
+      alert("🗑️ ลบรายการเงินเรียบร้อยแล้วครับ!");
     } catch (error) {
-      alert("เกิดข้อผิดพลาดไม่สามารถลบรายการได้: " + error.message);
+      alert("เกิดข้อผิดพลาด: " + error.message);
     }
   }
 }
@@ -501,9 +522,8 @@ slipsCollectionRef.onSnapshot((snapshot) => {
     const amtStr = slipData.amount ? Number(slipData.amount).toLocaleString() + " บาท" : "ไม่ระบุ";
     const donorName = slipData.donorName ? slipData.donorName : 'คุณผู้ใจดี';
 
-    // [จุดแก้ไขสำคัญ] หากมีไฟล์รูปสลิปแสดงว่าเป็นคนทางบ้าน ให้ใส่ป้ายสีเทาเข้ม (bg-slate-600) ไว้หน้าชื่อผู้บริจาค
     const fromHomeBadge = slipData.image 
-      ? `<span class="inline-block bg-slate-600 text-white text-[11px] font-bold px-2 py-0.5 rounded mr-1.5 tracking-wide">ทางบ้าน</span>`
+      ? `<div class="mb-1"><span class="inline-block bg-slate-600 text-white text-[11px] font-bold px-2 py-0.5 rounded tracking-wide shadow-sm">[ ทางบ้าน ]</span></div>`
       : "";
 
     const receiptHtml = slipData.image 
@@ -514,13 +534,16 @@ slipsCollectionRef.onSnapshot((snapshot) => {
 
     html += `
       <tr class="hover:bg-slate-50 transition">
-        <td class="p-3 text-gray-600 font-medium">${dateStr}</td>
-        <td class="p-3 text-gray-800 font-semibold flex items-center h-full pt-10">${fromHomeBadge}${donorName}</td>
-        <td class="p-3 text-green-600 font-bold">${amtStr}</td>
-        <td class="p-3">${receiptHtml}</td>
+        <td class="p-3 text-gray-600 font-medium whitespace-nowrap">${dateStr}</td>
+        <td class="p-3 text-gray-800 font-semibold align-middle">
+          ${fromHomeBadge}
+          <div class="text-gray-900">${donorName}</div>
+        </td>
+        <td class="p-3 text-green-600 font-bold whitespace-nowrap">${amtStr}</td>
+        <td class="p-3 align-middle">${receiptHtml}</td>
         <td class="p-3 text-gray-700 max-w-xs break-words">${slipData.message || '<span class="text-gray-300">- ไม่ระบุข้อความ -</span>'}</td>
-        <td class="p-3 text-center">
-          <button onclick="deleteSlip('${docId}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-xl transition text-xs">
+        <td class="p-3 text-center align-middle">
+          <button onclick="deleteSlip('${docId}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-xl transition text-xs shadow-sm">
             🗑️ ลบคิว
           </button>
         </td>
