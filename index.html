@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ช่วยน้องแมวรักษาดวงตา 🐱</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+  <style>
+    body{
+      font-family:'Prompt',sans-serif;
+      background:#fffaf7;
+    }
+  </style>
+</head>
+
+<body class="text-gray-800">
+
+  <!-- NAVBAR -->
+  <nav class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur border-b border-orange-100">
+
+    <div class="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
+
+      <div class="flex items-center gap-3">
+
+        <div class="text-3xl">
+          🐱
+        </div>
+
+        <div>
+
+          <div class="font-bold text-lg">
+            ช่วยน้องมีมี่
+          </div>
+
+          <div class="text-sm text-gray-500">
+            อัปเดตการรักษา
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- LOGIN -->
+      <button
+        id="loginBtn"
+        onclick="loginWithGoogle()"
+        class="bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-2 rounded-full shadow-lg">
+
+        🔐 Owner Login
+
+      </button>
+
+    </div>
+
+  </nav>
+
+  <!-- HERO -->
+  <section class="relative h-screen overflow-hidden">
+
+    <img
+      src="https://images.unsplash.com/photo-1519052537078-e6302a4968d4?q=80&w=1600&auto=format&fit=crop"
+      class="w-full h-full object-cover"
+    />
+
+    <div class="absolute inset-0 bg-black/45"></div>
+
+    <div class="absolute inset-0 flex items-center justify-center px-6">
+
+      <div class="text-center text-white max-w-3xl">
+
+        <div class="text-6xl mb-4">
+          🐾
+        </div>
+
+        <h1 class="text-4xl md:text-6xl font-bold leading-tight">
+          ช่วยน้องมีมี่รักษาดวงตา
+        </h1>
+
+        <p class="mt-6 text-lg md:text-xl text-white/90 leading-relaxed">
+
+          น้องกำลังเข้ารับการรักษาอาการติดเชื้อที่ดวงตา
+          และต้องดูแลต่อเนื่องอย่างใกล้ชิด
+
+        </p>
+
+        <!-- STATUS -->
+        <div
+          id="statusBox"
+          class="mt-8 inline-flex items-center gap-3 bg-green-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl">
+
+          💖 เปิดรับบริจาคอยู่
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- OWNER PANEL -->
+  <section
+    id="ownerPanel"
+    class="hidden max-w-5xl mx-auto px-5 py-10">
+
+    <div class="bg-white rounded-3xl shadow-xl p-8 border border-orange-100">
+
+      <div class="flex items-center justify-between">
+
+        <div>
+
+          <h2 class="text-3xl font-bold">
+            🔐 Owner Dashboard
+          </h2>
+
+          <p class="text-gray-500 mt-2">
+            สำหรับเจ้าของเว็บเท่านั้น
+          </p>
+
+        </div>
+
+        <button
+          id="toggleBtn"
+          onclick="toggleDonation()"
+          class="bg-red-500 hover:bg-red-600 transition text-white px-6 py-4 rounded-2xl font-semibold">
+
+          🔴 ปิดรับบริจาคชั่วคราว
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- DONATION -->
+  <section
+    id="donationSection"
+    class="max-w-6xl mx-auto px-5 py-16">
+
+    <div class="grid md:grid-cols-2 gap-8">
+
+      <!-- QR -->
+      <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
+
+        <div class="bg-orange-500 text-white p-6">
+
+          <h2 class="text-3xl font-bold">
+            💳 บริจาคช่วยน้อง
+          </h2>
+
+        </div>
+
+        <div class="p-8 text-center">
+
+          <img
+            src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=PromptPay"
+            class="w-64 mx-auto rounded-3xl shadow-lg"
+          />
+
+          <div class="mt-6">
+
+            <div class="text-gray-500">
+              พร้อมเพย์
+            </div>
+
+            <div class="text-3xl font-bold mt-2">
+              081-234-5678
+            </div>
+
+            <div class="mt-3 text-gray-600">
+              ชื่อบัญชี: Jarawee P.
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- CAT INFO -->
+      <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
+
+        <div class="bg-orange-50 p-6">
+
+          <h2 class="text-3xl font-bold">
+            🏥 อาการล่าสุด
+          </h2>
+
+        </div>
+
+        <div class="p-8">
+
+          <div class="bg-orange-50 rounded-2xl p-5">
+
+            <div class="text-orange-500 font-semibold">
+              20 พฤษภาคม 2026
+            </div>
+
+            <div class="mt-3 text-lg leading-relaxed">
+
+              วันนี้น้องเริ่มกินอาหารได้เองแล้ว
+              หลังจากล้างแผลและให้ยาฆ่าเชื้อ
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- SLIP -->
+  <section
+    id="slipSection"
+    class="pb-20">
+
+    <div class="max-w-3xl mx-auto px-5">
+
+      <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
+
+        <div class="bg-orange-500 text-white p-6 text-center">
+
+          <h2 class="text-3xl font-bold">
+            📤 แนบสลิปบริจาค
+          </h2>
+
+        </div>
+
+        <div class="p-8 space-y-5">
+
+          <input
+            type="file"
+            class="w-full p-4 rounded-2xl border border-orange-200"
+          />
+
+          <textarea
+            rows="4"
+            placeholder="ข้อความให้กำลังใจน้อง (ไม่บังคับ)"
+            class="w-full p-4 rounded-2xl border border-orange-200"
+          ></textarea>
+
+          <button
+            class="w-full bg-orange-500 hover:bg-orange-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
+
+            ส่งสลิป 💖
+
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="bg-orange-500 text-white py-10">
+
+    <div class="max-w-5xl mx-auto px-5 text-center">
+
+      <div class="text-4xl mb-3">
+        🐾
+      </div>
+
+      <h3 class="text-2xl font-bold">
+        ขอบคุณทุกคนที่ช่วยน้อง
+      </h3>
+
+    </div>
+
+  </footer>
+
+  <!-- SCRIPT -->
+  <script>
+
+    // FIREBASE CONFIG
+    const firebaseConfig = {
+
+      apiKey: "ใส่ apiKey",
+      authDomain: "ใส่ authDomain",
+      projectId: "ใส่ projectId",
+      appId: "ใส่ appId"
+
+    };
+
+    firebase.initializeApp(firebaseConfig);
+
+    // OWNER EMAILS
+    const allowedOwners = [
+
+      "owner1@gmail.com",
+      "owner2@gmail.com"
+
+    ];
+
+    let donationOpen = true;
+
+    // LOGIN
+    async function loginWithGoogle() {
+
+      const provider =
+        new firebase.auth.GoogleAuthProvider();
+
+      try {
+
+        const result =
+          await firebase.auth().signInWithPopup(provider);
+
+        const user = result.user;
+
+        // CHECK OWNER
+        if (allowedOwners.includes(user.email)) {
+
+          document
+            .getElementById("ownerPanel")
+            .classList.remove("hidden");
+
+          alert("เข้าสู่ระบบสำเร็จ");
+
+        } else {
+
+          alert("คุณไม่มีสิทธิ์เข้าถึง");
+
+          firebase.auth().signOut();
+
+        }
+
+      } catch(error) {
+
+        console.log(error);
+
+        alert("เกิดข้อผิดพลาด");
+
+      }
+
+    }
+
+    // TOGGLE DONATION
+    function toggleDonation() {
+
+      donationOpen = !donationOpen;
+
+      const statusBox =
+        document.getElementById("statusBox");
+
+      const donationSection =
+        document.getElementById("donationSection");
+
+      const slipSection =
+        document.getElementById("slipSection");
+
+      const toggleBtn =
+        document.getElementById("toggleBtn");
+
+      if (donationOpen) {
+
+        statusBox.innerHTML =
+          "💖 เปิดรับบริจาคอยู่";
+
+        statusBox.className =
+          "mt-8 inline-flex items-center gap-3 bg-green-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
+
+        donationSection.style.display = "block";
+        slipSection.style.display = "block";
+
+        toggleBtn.innerHTML =
+          "🔴 ปิดรับบริจาคชั่วคราว";
+
+      } else {
+
+        statusBox.innerHTML =
+          "🙏 ปิดรับบริจาคชั่วคราว";
+
+        statusBox.className =
+          "mt-8 inline-flex items-center gap-3 bg-gray-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
+
+        donationSection.style.display = "none";
+        slipSection.style.display = "none";
+
+        toggleBtn.innerHTML =
+          "🟢 เปิดรับบริจาคอีกครั้ง";
+
+      }
+
+    }
+
+  </script>
+
+</body>
+</html>
