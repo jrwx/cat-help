@@ -218,7 +218,7 @@
               <th class="p-4 font-semibold text-center">หลักฐาน</th>
               <th class="p-4 font-semibold text-right">รายรับ (+)</th>
               <th class="p-4 font-semibold text-right">รายจ่าย (-)</th>
-              <th id="thAction" class="p-4 font-semibold text-center hidden">จัดการ</th>
+              <th class="p-4 font-semibold text-center">จัดการ</th>
             </tr>
           </thead>
           <tbody id="financeTableBody" class="text-base divide-y divide-gray-100">
@@ -310,7 +310,7 @@ function openImageModal(docId) {
     document.getElementById("modalTargetImage").src = base64Data;
     document.getElementById("imageModal").classList.remove("hidden");
   } else {
-    alert("ไม่สามารถดึงข้อมูลรูปภาพได้");
+    alert("ไม่สามารถดีกข้อมูลรูปภาพได้");
   }
 }
 
@@ -351,7 +351,7 @@ financeCollectionRef.onSnapshot((snapshot) => {
     }
   });
 
-  // คำนวณยอดคงเหลือใหม่แบบสดๆ เมื่อมี Snapshot เปลี่ยนแปลง (รวมถึงตอนกดลบด้วย)
+  // คำนวณยอดคงเหลือใหม่แบบ Realtime
   const balance = totalIn - totalOut;
   document.getElementById("totalDonation").innerHTML = totalIn.toLocaleString() + " บาท";
   document.getElementById("totalExpense").innerHTML = totalOut.toLocaleString() + " บาท";
@@ -373,9 +373,13 @@ financeCollectionRef.onSnapshot((snapshot) => {
       ? `<button onclick="openImageModal('finance_${item.id}')" class="bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold px-2.5 py-1 rounded-xl text-xs transition flex items-center gap-1 mx-auto">📸 ดูหลักฐาน</button>`
       : `<span class="text-gray-300 text-xs">- ไม่มี -</span>`;
 
-    const actionCellHtml = isOwnerLoggedIn 
-      ? `<td class="p-4 text-center action-col"><button onclick="deleteTransaction('${item.id}')" class="bg-red-50 hover:bg-red-100 text-red-500 text-xs px-2.5 py-1 rounded-lg font-bold transition">🗑️ ลบ</button></td>`
-      : `<td class="p-4 text-center hidden action-col"></td>`;
+    // ปุ่มลบถูกเปิดให้ทุกคนแสดงขึ้นมาตลอดเวลาอย่างอิสระตามคำขอ
+    const actionCellHtml = `
+      <td class="p-4 text-center">
+        <button onclick="deleteTransaction('${item.id}')" class="bg-red-50 hover:bg-red-100 text-red-500 text-xs px-2.5 py-1.5 rounded-lg font-bold transition border border-red-200 shadow-sm">
+          🗑️ ลบ
+        </button>
+      </td>`;
 
     html += `
       <tr class="hover:bg-orange-50/30 transition text-sm md:text-base">
@@ -389,7 +393,6 @@ financeCollectionRef.onSnapshot((snapshot) => {
     `;
   });
   tableBody.innerHTML = html;
-  toggleActionColumnView();
 });
 
 // 3. ดึงข้อมูลบันทึกอาการวันต่อวัน
@@ -464,8 +467,6 @@ slipsCollectionRef.onSnapshot((snapshot) => {
 
 // 💵 ฟังก์ชันเพิ่มบันทึกรายรับ-รายจ่ายจากมือ Admin เอง
 async function addNewTransaction() {
-  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
-
   const rawDate = document.getElementById("transDate").value;
   const type = document.getElementById("transType").value;
   const amount = Number(document.getElementById("transAmount").value);
@@ -514,11 +515,10 @@ async function addNewTransaction() {
 
 // 🗑️ ฟังก์ชันลบรายการบัญชี (ลบปุ๊บ ระบบออนสแนปช็อตจะคำนวณยอดบริจาคและยอดคงเหลือใหม่ให้เองทันที)
 async function deleteTransaction(itemId) {
-  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
   if (confirm("⚠️ คุณต้องการลบรายการบัญชีรายรับ-รายจ่ายชิ้นนี้ใช่หรือไม่? (ยอดบริจาคและยอดคงเหลือจะถูกปรับปรุงลดลงอัตโนมัติ)")) {
     try {
       await financeCollectionRef.doc(itemId).delete();
-      alert("ลบรายการเงินออกจากระบบบัญชีเรียบร้อย ยอดคงเหลือคำนวณใหม่แล้วครับ!");
+      alert("ลบรายการเงินออกจากระบบบัญชีเรียบร้อย ยอดคงเหลือถูกหักและคำนวณใหม่ให้แล้วครับ!");
     } catch (error) {
       alert("ไม่สามารถลบรายการได้: " + error.message);
     }
@@ -598,19 +598,6 @@ function handleAdminAuth() {
     } else {
       alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง! ปฏิเสธการเข้าถึง");
     }
-  }
-  toggleActionColumnView();
-}
-
-function toggleActionColumnView() {
-  const thAction = document.getElementById("thAction");
-  const actionCols = document.querySelectorAll(".action-col");
-  if(isOwnerLoggedIn) {
-    if(thAction) thAction.classList.remove("hidden");
-    actionCols.forEach(col => col.classList.remove("hidden"));
-  } else {
-    if(thAction) thAction.classList.add("hidden");
-    actionCols.forEach(col => col.classList.add("hidden"));
   }
 }
 
@@ -714,7 +701,7 @@ async function deleteConditionLog(logId) {
   }
 }
 
-// 📤 ✨ ฟังก์ชันส่งสลิปบริจาค
+// 📤 ฟังก์ชันส่งสลิปบริจาค
 async function submitDonationSlip() {
   const nameInput = document.getElementById("slipDonorNameInput");
   const amtInput = document.getElementById("slipAmountInput");
