@@ -12,7 +12,6 @@
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
   <style>
@@ -41,7 +40,7 @@
     </div>
     <button
       id="loginBtn"
-      onclick="loginWithGoogle()"
+      onclick="handleAuthAction()"
       class="bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold">
       🔐 Owner Login
     </button>
@@ -89,27 +88,47 @@
   <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-orange-100">
     <div class="bg-orange-500 text-white p-6">
       <h2 class="text-3xl font-bold">🔐 Owner Dashboard</h2>
-      <p class="mt-2 text-white/80">สำหรับเจ้าของเว็บเท่านั้น (พิมพ์แก้ไขข้อมูลหน้าเว็บได้จากที่นี่)</p>
+      <p class="mt-2 text-white/80">ระบบจัดการข้อมูลหลังบ้านสำหรับผู้ดูแลเว็บ</p>
     </div>
     <div class="p-8 space-y-5">
-      <div>
-        <label class="font-semibold block mb-2">ยอดบริจาคทั้งหมด (บาท)</label>
-        <input id="donationInput" type="number" placeholder="เช่น 12500" class="w-full p-4 rounded-2xl border border-orange-200" />
-      </div>
-      <div>
-        <label class="font-semibold block mb-2">ค่ารักษาที่ใช้ไป (บาท)</label>
-        <input id="expenseInput" type="number" placeholder="เช่น 5200" class="w-full p-4 rounded-2xl border border-orange-200" />
+      <div class="grid md:grid-cols-2 gap-5">
+        <div>
+          <label class="font-semibold block mb-2">ยอดบริจาคทั้งหมด (บาท)</label>
+          <input id="donationInput" type="number" class="w-full p-4 rounded-2xl border border-orange-200" />
+        </div>
+        <div>
+          <label class="font-semibold block mb-2">ค่ารักษาที่ใช้ไป (บาท)</label>
+          <input id="expenseInput" type="number" class="w-full p-4 rounded-2xl border border-orange-200" />
+        </div>
       </div>
       <div>
         <label class="font-semibold block mb-2">รายละเอียดค่าใช้จ่าย</label>
-        <textarea id="expenseDetail" rows="4" placeholder="- ค่ายา 1,200 บาท" class="w-full p-4 rounded-2xl border border-orange-200"></textarea>
+        <textarea id="expenseDetail" rows="3" class="w-full p-4 rounded-2xl border border-orange-200"></textarea>
       </div>
-      <div>
-        <label class="font-semibold block mb-2">อัปเดตอาการล่าสุดของน้อง</label>
-        <textarea id="catConditionInput" rows="3" placeholder="วันนี้น้องอาการดีขึ้น..." class="w-full p-4 rounded-2xl border border-orange-200"></textarea>
+      
+      <div class="p-5 bg-orange-50/50 rounded-2xl border border-orange-100 space-y-4">
+        <h4 class="font-bold text-orange-600 text-lg">➕ เพิ่มบันทึกอาการประจำวัน</h4>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-semibold block mb-1">วันที่อัปเดต</label>
+            <input id="newLogDate" type="text" placeholder="เช่น 20 พฤษภาคม 2026" class="w-full p-3 rounded-xl border border-orange-200 bg-white" />
+          </div>
+          <div>
+            <label class="text-sm font-semibold block mb-1">ลิงก์รูปภาพน้องแมว (ระบุหรือไม่ก็ได้)</label>
+            <input id="newLogImage" type="url" placeholder="วางลิงก์รูปภาพ https://..." class="w-full p-3 rounded-xl border border-orange-200 bg-white" />
+          </div>
+        </div>
+        <div>
+          <label class="text-sm font-semibold block mb-1">รายละเอียดอาการของวันนี้น้องแมว</label>
+          <textarea id="newLogContent" rows="2" placeholder="วันนี้น้องเริ่มกินอาหารได้เองแล้ว..." class="w-full p-3 rounded-xl border border-orange-200 bg-white"></textarea>
+        </div>
+        <button onclick="addNewConditionLog()" class="w-full bg-emerald-500 hover:bg-emerald-600 transition text-white py-3 rounded-xl font-semibold text-sm shadow">
+          ✨ เพิ่มบันทึกวันนี้น้องลงไทม์ไลน์
+        </button>
       </div>
+
       <button onclick="updateFinance()" class="w-full bg-orange-500 hover:bg-orange-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
-        💾 บันทึกข้อมูลลงหน้าเว็บ
+        💾 บันทึกข้อมูลการเงินและรายละเอียดค่ารักษา
       </button>
       <button id="toggleBtn" onclick="toggleDonation()" class="w-full bg-red-500 hover:bg-red-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
         🔴 ปิดรับบริจาคชั่วคราว
@@ -119,8 +138,8 @@
 </section>
 
 <section id="donationSection" class="max-w-6xl mx-auto px-5 py-10">
-  <div class="grid md:grid-cols-2 gap-8">
-    <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
+  <div class="grid md:grid-cols-2 gap-8 items-start">
+    <div class="bg-white rounded-3xl shadow-xl overflow-hidden md:sticky md:top-24">
       <div class="bg-orange-500 text-white p-6">
         <h2 class="text-3xl font-bold">💳 บริจาคช่วยน้อง</h2>
       </div>
@@ -133,15 +152,13 @@
         </div>
       </div>
     </div>
+    
     <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
       <div class="bg-orange-50 p-6">
-        <h2 class="text-3xl font-bold">🏥 อาการล่าสุด</h2>
+        <h2 class="text-3xl font-bold">🏥 บันทึกอาการวันต่อวัน</h2>
       </div>
-      <div class="p-8">
-        <div class="bg-orange-50 rounded-2xl p-5">
-          <div class="text-orange-500 font-semibold">อัปเดตล่าสุด</div>
-          <div id="catConditionText" class="mt-3 text-lg leading-relaxed">กำลังโหลดข้อมูลอาการล่าสุด...</div>
-        </div>
+      <div id="timelineContainer" class="p-8 space-y-6 max-h-[600px] overflow-y-auto">
+        <p class="text-gray-400 text-center">กำลังโหลดข้อมูลไทม์ไลน์...</p>
       </div>
     </div>
   </div>
@@ -184,7 +201,6 @@
 </footer>
 
 <script>
-// CONFIG สำหรับเชื่อมต่อ Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDLL5PYwQ3aHxeA-PszAh2x3mJxTUDXdpY",
   authDomain: "cat-help-18ffb.firebaseapp.com",
@@ -195,102 +211,174 @@ const firebaseConfig = {
   measurementId: "G-LEB15WNE0X"
 };
 
-// เริ่มทำงานระบบ Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const liveDataRef = db.collection("cat_status").doc("live_data");
 
-// 🔑 รายชื่ออีเมลผู้ดูแลระบบ
 const allowedOwners = [
   "j45phuarram@gmail.com",
   "mhiwpharr@hotmail.com"
 ];
 
 let donationOpen = true;
+let isUserLoggedIn = false; 
 
-// 1. ดึงข้อมูลแบบ Realtime จาก Firebase มาแสดงบนหน้าเว็บ
+// 1. ดึงข้อมูลแบบ Realtime จาก Firebase มารันหน้าเว็บ
 liveDataRef.onSnapshot((doc) => {
   if (doc.exists) {
     const data = doc.data();
     donationOpen = data.donationOpen;
     const balance = data.totalDonation - data.totalExpense;
 
-    // อัปเดตข้อมูลบนหน้าเว็บ
+    // อัปเดตข้อมูลตัวเลขหน้าเว็บ
     document.getElementById("totalDonation").innerHTML = data.totalDonation.toLocaleString() + " บาท";
     document.getElementById("totalExpense").innerHTML = data.totalExpense.toLocaleString() + " บาท";
     document.getElementById("balanceAmount").innerHTML = balance.toLocaleString() + " บาท";
     document.getElementById("expenseList").innerText = data.expenseDetail;
-    document.getElementById("catConditionText").innerText = data.catCondition;
 
-    // ใส่ค่ารอไว้ในช่อง Input
+    // ดึงข้อมูลไปรอกล่องกรอกหลังบ้าน
     document.getElementById("donationInput").value = data.totalDonation;
     document.getElementById("expenseInput").value = data.totalExpense;
     document.getElementById("expenseDetail").value = data.expenseDetail;
-    document.getElementById("catConditionInput").value = data.catCondition;
+
+    // Render รายการอาการวันต่อวัน (Timeline)
+    renderTimeline(data.conditions || []);
 
     updateDonationUI(donationOpen);
-  } else {
-    console.log("ไม่พบเอกสารข้อมูลในคอลเลกชัน!");
   }
-}, (error) => {
-  console.error("เกิดข้อผิดพลาดในการดึงข้อมูล: ", error);
 });
 
-// ฟังก์ชันตรวจสอบสิทธิ์หลังล็อกอินสำเร็จ
+// ฟังก์ชันสร้างหน้าต่าง Timeline แบบวันต่อวันพร้อมรูปภาพ
+function renderTimeline(conditionsArray) {
+  const container = document.getElementById("timelineContainer");
+  if (conditionsArray.length === 0) {
+    container.innerHTML = `<p class="text-gray-400 text-center py-4">ยังไม่มีข้อมูลการอัปเดตอาการ</p>`;
+    return;
+  }
+
+  // เรียงลำดับให้อาการล่าสุดที่เพิ่งเพิ่มแสดงขึ้นก่อนด้านบนสุด
+  const sortedLogs = [...conditionsArray].reverse();
+
+  let html = "";
+  sortedLogs.forEach((log) => {
+    html += `
+      <div class="bg-orange-50 rounded-2xl p-5 border border-orange-100 space-y-3 transition hover:shadow-md">
+        <div class="flex justify-between items-center">
+          <span class="text-orange-500 font-bold text-sm bg-orange-100 px-3 py-1 rounded-full">📅 ${log.date}</span>
+        </div>
+        <p class="text-gray-700 text-base leading-relaxed whitespace-pre-line">${log.content}</p>
+        ${log.image ? `
+          <div class="overflow-hidden rounded-xl border border-orange-200 bg-white">
+            <a href="${log.image}" target="_blank" title="คลิกเพื่อดูรูปใหญ่">
+              <img src="${log.image}" class="w-full max-h-64 object-cover hover:scale-105 transition duration-300" onerror="this.src='https://placehold.co/600x400?text=รูปภาพไม่ถูกต้อง'"/>
+            </a>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+// เช็คความปลอดภัยสิทธิ์เข้าใช้งานระบบผู้ดูแล
 function checkUserAccess(user) {
   if(user){
     const loggedInEmail = user.email.toLowerCase();
     if(allowedOwners.includes(loggedInEmail)){
+      isUserLoggedIn = true;
       document.getElementById("ownerPanel").classList.remove("hidden");
-      document.getElementById("loginBtn").innerHTML = "🔓 ผู้ดูแล: " + user.email;
-      alert("เข้าสู่ระบบสำเร็จ! แผงแก้ไขข้อมูลเปิดใช้งานแล้วครับ");
+      document.getElementById("loginBtn").innerHTML = "🚪 Logout"; // เปลี่ยนคำบนปุ่มแสดงแค่ปุ่มล็อกเอาท์แทน
+      document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
     }else{
-      alert("คุณไม่มีสิทธิ์เข้าใช้งานระบบผู้ดูแล (อีเมลไม่ตรงกับระบบ)");
+      alert("คุณไม่มีสิทธิ์เข้าใช้งานระบบผู้ดูแล");
       firebase.auth().signOut();
     }
+  } else {
+    // ถ้าผู้ใช้ไม่ได้ล็อกอินอยู่ ให้ซ่อนหน้าต่างทั้งหมดทันที
+    isUserLoggedIn = false;
+    document.getElementById("ownerPanel").classList.add("hidden");
+    document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
+    document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
   }
 }
 
-// เช็คสิทธิ์กรณีผู้ใช้เคยล็อกอินค้างไว้แล้ว
+// ตรวจจับสถานะการล็อกอินปัจจุบันแบบเรียลไทม์
 firebase.auth().onAuthStateChanged((user) => {
-  if (user) {
-    checkUserAccess(user);
-  }
+  checkUserAccess(user);
 });
 
-// 2. ปรับการสั่งล็อกอินเป็นแบบ Popup เพื่อให้ใช้งานบนเครื่องคอมพิวเตอร์ทั่วไปได้ง่ายขึ้น
-async function loginWithGoogle(){
-  const provider = new firebase.auth.GoogleAuthProvider();
-  try{
-    const result = await firebase.auth().signInWithPopup(provider);
-    checkUserAccess(result.user);
-  }catch(error){
-    console.error(error);
-    alert("เกิดข้อผิดพลาดในการล็อกอิน: " + error.message);
+// ฟังก์ชันศูนย์กลางจัดการปุ่มกด ล็อกอิน/ล็อกเอาท์
+function handleAuthAction() {
+  if (isUserLoggedIn) {
+    // ถ้าล็อกอินอยู่แล้วให้ทำการ Logout ทันที
+    firebase.auth().signOut().then(() => {
+      alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
+    });
+  } else {
+    // ถ้ายังไม่ได้ล็อกอิน ให้เริ่มกระบวนการ Popup Sign-in 
+    const provider = new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(provider)
+      .then((result) => {
+        checkUserAccess(result.user);
+      })
+      .catch((error) => {
+        alert("เกิดข้อผิดพลาดในการล็อกอิน: " + error.message);
+      });
   }
 }
 
-// ฟังก์ชันเมื่อแอดมินกดปุ่ม "บันทึกข้อมูล" จากหน้าเว็บ
+// ฟังก์ชันเพิ่มอาการบันทึกประจำวันใหม่ลงฐานข้อมูล (Array Union)
+async function addNewConditionLog() {
+  const dateVal = document.getElementById("newLogDate").value.trim();
+  const imgVal = document.getElementById("newLogImage").value.trim();
+  const contentVal = document.getElementById("newLogContent").value.trim();
+
+  if (!dateVal || !contentVal) {
+    alert("กรุณากรอกวันที่และรายละเอียดอาการของน้องแมวด้วยครับ");
+    return;
+  }
+
+  const newLog = {
+    date: dateVal,
+    image: imgVal || null,
+    content: contentVal
+  };
+
+  try {
+    // ใช้คำสั่ง arrayUnion เพื่อเพิ่มก้อนข้อมูลใหม่เข้าไปต่อท้ายในตารางข้อมูลบน Firebase โดยตรง
+    await liveDataRef.update({
+      conditions: firebase.firestore.FieldValue.arrayUnion(newLog)
+    });
+    
+    // ล้างค่าข้อมูลในกล่องป้อนข้อมูลหลังส่งเสร็จเพื่อรองรับการกรอกครั้งถัดไป
+    document.getElementById("newLogDate").value = "";
+    document.getElementById("newLogImage").value = "";
+    document.getElementById("newLogContent").value = "";
+    
+    alert("เพิ่มข้อมูลอาการประจำวันลงไทม์ไลน์เรียบร้อยแล้ว! 🎉");
+  } catch (error) {
+    alert("ไม่สามารถเพิ่มข้อมูลอาการได้: " + error.message);
+  }
+}
+
+// ฟังก์ชันบันทึกข้อมูลการเงินหลัก
 async function updateFinance(){
   const donation = Number(document.getElementById("donationInput").value);
   const expense = Number(document.getElementById("expenseInput").value);
   const detail = document.getElementById("expenseDetail").value;
-  const condition = document.getElementById("catConditionInput").value;
 
   try {
     await liveDataRef.update({
       totalDonation: donation,
       totalExpense: expense,
-      expenseDetail: detail,
-      catCondition: condition
+      expenseDetail: detail
     });
-    alert("อัปเดตข้อมูลหน้าเว็บสำเร็จแล้ว! 🎉");
+    alert("อัปเดตข้อมูลการเงินสำเร็จแล้ว! 🎉");
   } catch (error) {
-    alert("ไม่สามารถบันทึกข้อมูลได้: " + error.message);
+    alert("ไม่สามารถบันทึกข้อมูลการเงินได้: " + error.message);
   }
 }
 
-// ฟังก์ชันสลับเปิด-ปิดรับบริจาค
 async function toggleDonation(){
   try {
     await liveDataRef.update({ donationOpen: !donationOpen });
@@ -299,7 +387,6 @@ async function toggleDonation(){
   }
 }
 
-// ฟังก์ชันปรับหน้าตาเว็บตามสถานะ เปิด/ปิด บริจาค
 function updateDonationUI(isOpen) {
   const statusBox = document.getElementById("statusBox");
   const donationSection = document.getElementById("donationSection");
@@ -312,15 +399,15 @@ function updateDonationUI(isOpen) {
     donationSection.style.display = "block";
     slipSection.style.display = "block";
     toggleBtn.innerHTML = "🔴 ปิดรับบริจาคชั่วคราว";
-    toggleBtn.className = "w-full bg-red-500 hover:bg-red-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg";
   }else{
     statusBox.innerHTML = "🙏 ปิดรับบริจาคชั่วคราว";
     statusBox.className = "mt-8 inline-flex items-center gap-3 bg-gray-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
     donationSection.style.display = "none";
     slipSection.style.display = "none";
     toggleBtn.innerHTML = "🟢 เปิดรับบริจาคอีกครั้ง";
-    toggleBtn.className = "w-full bg-green-500 hover:bg-green-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg";
   }
 }
-</script> </body>
+</script>
+
+</body>
 </html>
