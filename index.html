@@ -109,12 +109,12 @@
         <h4 class="font-bold text-orange-600 text-lg">➕ เพิ่มบันทึกอาการประจำวัน</h4>
         <div class="grid md:grid-cols-2 gap-4">
           <div>
-            <label class="text-sm font-semibold block mb-1">วันที่อัปเดต</label>
-            <input id="newLogDate" type="text" placeholder="เช่น 20 พฤษภาคม 2026" class="w-full p-3 rounded-xl border border-orange-200 bg-white" />
+            <label class="text-sm font-semibold block mb-1">📅 เลือกวันที่อัปเดต</label>
+            <input id="newLogDate" type="date" class="w-full p-3 rounded-xl border border-orange-200 bg-white" />
           </div>
           <div>
-            <label class="text-sm font-semibold block mb-1">ลิงก์รูปภาพน้องแมว (ระบุหรือไม่ก็ได้)</label>
-            <input id="newLogImage" type="url" placeholder="วางลิงก์รูปภาพ https://..." class="w-full p-3 rounded-xl border border-orange-200 bg-white" />
+            <label class="text-sm font-semibold block mb-1">🖼️ เลือกภาพน้องแมวจากในเครื่อง (เลือกได้หลายรูป)</label>
+            <input id="newLogImagesInput" type="file" accept="image/*" multiple class="w-full p-2 rounded-xl border border-orange-200 bg-white text-sm" />
           </div>
         </div>
         <div>
@@ -200,7 +200,6 @@
 </footer>
 
 <script>
-// CONFIG ไลบรารีการเชื่อมต่อ Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDLL5PYwQ3aHxeA-PszAh2x3mJxTUDXdpY",
   authDomain: "cat-help-18ffb.firebaseapp.com",
@@ -215,7 +214,6 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const liveDataRef = db.collection("cat_status").doc("live_data");
 
-// 🔑 อัปเดต Username และ Password ตามที่คุณกำหนดไว้ครับ 
 const ADMIN_USER = "แมวน้อย";
 const ADMIN_PASS = "12345";
 
@@ -243,7 +241,7 @@ liveDataRef.onSnapshot((doc) => {
   }
 });
 
-// ฟังก์ชันสร้างหน้าต่าง Timeline แบบวันต่อวันพร้อมรูปภาพ
+// ฟังก์ชันสร้างหน้าต่าง Timeline แบบวันต่อวัน (รองรับการแสดงผลภาพหลายรูปพร้อมกัน 🖼️)
 function renderTimeline(conditionsArray) {
   const container = document.getElementById("timelineContainer");
   if (conditionsArray.length === 0) {
@@ -254,47 +252,60 @@ function renderTimeline(conditionsArray) {
   const sortedLogs = [...conditionsArray].reverse();
   let html = "";
   sortedLogs.forEach((log) => {
+    // แยกประมวลผลกรณีที่มีรูปภาพเดียว (แบบเดิม) หรือมีอาร์เรย์ของรูปภาพหลายรูป (แบบใหม่)
+    let imagesHtml = "";
+    if (log.images && Array.isArray(log.images)) {
+      imagesHtml = `<div class="grid grid-cols-2 gap-2 mt-2">`;
+      log.images.forEach((imgSrc) => {
+        imagesHtml += `
+          <div class="overflow-hidden rounded-xl border border-orange-200 bg-white">
+            <a href="${imgSrc}" target="_blank">
+              <img src="${imgSrc}" class="w-full h-40 object-cover hover:scale-105 transition duration-300" onerror="this.src='https://placehold.co/600x400?text=รูปภาพไม่ถูกต้อง'"/>
+            </a>
+          </div>`;
+      });
+      imagesHtml += `</div>`;
+    } else if (log.image) {
+      imagesHtml = `
+        <div class="overflow-hidden rounded-xl border border-orange-200 bg-white mt-2">
+          <a href="${log.image}" target="_blank">
+            <img src="${log.image}" class="w-full max-h-64 object-cover hover:scale-105 transition duration-300" onerror="this.src='https://placehold.co/600x400?text=รูปภาพไม่ถูกต้อง'"/>
+          </a>
+        </div>`;
+    }
+
     html += `
       <div class="bg-orange-50 rounded-2xl p-5 border border-orange-100 space-y-3 transition hover:shadow-md">
         <div class="flex justify-between items-center">
           <span class="text-orange-500 font-bold text-sm bg-orange-100 px-3 py-1 rounded-full">📅 ${log.date}</span>
         </div>
         <p class="text-gray-700 text-base leading-relaxed whitespace-pre-line">${log.content}</p>
-        ${log.image ? `
-          <div class="overflow-hidden rounded-xl border border-orange-200 bg-white">
-            <a href="${log.image}" target="_blank" title="คลิกเพื่อดูรูปใหญ่">
-              <img src="${log.image}" class="w-full max-h-64 object-cover hover:scale-105 transition duration-300" onerror="this.src='https://placehold.co/600x400?text=รูปภาพไม่ถูกต้อง'"/>
-            </a>
-          </div>
-        ` : ''}
+        ${imagesHtml}
       </div>
     `;
   });
   container.innerHTML = html;
 }
 
-// 🔐 ระบบยืนยันตัวตนผู้ดูแลแบบล็อกอิน (ซ่อนข้อมูลอย่างเด็ดขาดตามโจทย์)
+// 🔐 ระบบยืนยันตัวตนผู้ดูแลแบบล็อกอิน (Username & Password)
 function handleAdminAuth() {
   if (isOwnerLoggedIn) {
-    // ออกจากระบบ (Logout)
     isOwnerLoggedIn = false;
     document.getElementById("ownerPanel").classList.add("hidden");
     document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
     document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
     alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
   } else {
-    // เรียกกล่องป้อนข้อมูลทีละสเต็ป
     const userInput = prompt("👤 กรุณากรอก 'ชื่อผู้ใช้' (Username) :");
     if (userInput === null) return; 
     
     const passInput = prompt("🔑 กรุณากรอก 'รหัสผ่าน' (Password) :");
     if (passInput === null) return; 
 
-    // ตรวจสอบความถูกต้องของ Username และ Password
     if (userInput === ADMIN_USER && passInput === ADMIN_PASS) {
       isOwnerLoggedIn = true;
       document.getElementById("ownerPanel").classList.remove("hidden");
-      document.getElementById("loginBtn").innerHTML = "🚪 Logout (ผู้ดูแล)"; // แสดงคำว่าผู้ดูแลตามบรีฟ ไม่ระบุข้อมูลอื่น
+      document.getElementById("loginBtn").innerHTML = "🚪 Logout (ผู้ดูแล)";
       document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
       alert("🔓 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณผู้ดูแลระบบครับ");
     } else {
@@ -303,22 +314,51 @@ function handleAdminAuth() {
   }
 }
 
-// ฟังก์ชันเพิ่มอาการบันทึกประจำวันใหม่ลงฐานข้อมูล
+// ฟังก์ชันแปลงไฟล์รูปภาพจากเครื่องให้เป็น String Base64 สำหรับจัดเก็บเข้าคลาวด์คิวขนาน
+function convertFileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (error) => reject(error);
+  });
+}
+
+// ฟังก์ชันเพิ่มอาการบันทึกประจำวันใหม่ลงฐานข้อมูล (ปรับปรุงฟอร์แมตวันที่ และอัปโหลดได้หลายรูปภาพ 📸)
 async function addNewConditionLog() {
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
   
-  const dateVal = document.getElementById("newLogDate").value.trim();
-  const imgVal = document.getElementById("newLogImage").value.trim();
+  const rawDateVal = document.getElementById("newLogDate").value;
+  const filesInput = document.getElementById("newLogImagesInput");
   const contentVal = document.getElementById("newLogContent").value.trim();
 
-  if (!dateVal || !contentVal) {
-    alert("กรุณากรอกวันที่และรายละเอียดอาการของน้องแมวด้วยครับ");
+  if (!rawDateVal || !contentVal) {
+    alert("กรุณาเลือกวันที่จากปฏิทินและกรอกรายละเอียดอาการของน้องแมวด้วยครับ");
     return;
   }
 
+  // แปลงฟอร์แมตวันที่จากปฏิทินป๊อปอัป (YYYY-MM-DD) เป็นภาษาไทยให้อ่านง่ายขึ้น (เช่น 20 พฤษภาคม 2569)
+  const dateObj = new Date(rawDateVal);
+  const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+  const formattedThaiDate = `${dateObj.getDate()} ${thaiMonths[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
+
+  // วนลูปอ่านและแปลงค่ารูปภาพทุกรูปที่ถูกเลือกจากในคอมพิวเตอร์/มือถือ
+  let base64ImagesArray = [];
+  if (filesInput.files && filesInput.files.length > 0) {
+    try {
+      for (let i = 0; i < filesInput.files.length; i++) {
+        const base64Str = await convertFileToBase64(filesInput.files[i]);
+        base64ImagesArray.push(base64Str);
+      }
+    } catch (e) {
+      alert("เกิดข้อผิดพลาดในการประมวลผลไฟล์ภาพของคุณ");
+      return;
+    }
+  }
+
   const newLog = {
-    date: dateVal,
-    image: imgVal || null,
+    date: formattedThaiDate,
+    images: base64ImagesArray.length > 0 ? base64ImagesArray : null,
     content: contentVal
   };
 
@@ -327,8 +367,9 @@ async function addNewConditionLog() {
       conditions: firebase.firestore.FieldValue.arrayUnion(newLog)
     });
     
+    // ล้างข้อมูลในฟอร์มหลังบันทึกสำเร็จ
     document.getElementById("newLogDate").value = "";
-    document.getElementById("newLogImage").value = "";
+    document.getElementById("newLogImagesInput").value = "";
     document.getElementById("newLogContent").value = "";
     
     alert("เพิ่มข้อมูลอาการประจำวันลงไทม์ไลน์เรียบร้อยแล้ว! 🎉");
