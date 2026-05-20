@@ -219,8 +219,8 @@ const ADMIN_PASS = "12345";
 
 let isOwnerLoggedIn = false;
 let donationOpen = true;
+let currentConditionsArray = []; // เก็บสำเนาข้อมูลอาร์เรย์ปัจจุบันเพื่อใช้จัดการการลบ
 
-// 1. ดึงข้อมูลแบบ Realtime จากคลาวด์ Firebase มารันบนเว็บอินเทอร์เฟซ
 liveDataRef.onSnapshot((doc) => {
   if (doc.exists) {
     const data = doc.data();
@@ -236,12 +236,13 @@ liveDataRef.onSnapshot((doc) => {
     document.getElementById("expenseInput").value = data.totalExpense;
     document.getElementById("expenseDetail").value = data.expenseDetail;
 
-    renderTimeline(data.conditions || []);
+    currentConditionsArray = data.conditions || [];
+    renderTimeline(currentConditionsArray);
     updateDonationUI(donationOpen);
   }
 });
 
-// ฟังก์ชันสร้างหน้าต่าง Timeline แบบวันต่อวัน (รองรับการแสดงผลภาพหลายรูปพร้อมกัน 🖼️)
+// ฟังก์ชันสร้างหน้าต่าง Timeline อาการรายวัน (เพิ่มปุ่มลบให้กับผู้ดูแล 🛠️)
 function renderTimeline(conditionsArray) {
   const container = document.getElementById("timelineContainer");
   if (conditionsArray.length === 0) {
@@ -249,20 +250,26 @@ function renderTimeline(conditionsArray) {
     return;
   }
 
-  const sortedLogs = [...conditionsArray].reverse();
+  // สร้างระบบอินเด็กซ์อ้างอิงตำแหน่งจริงของข้อมูลต้นฉบับก่อนทำการรีเวิร์สย้อนกลับ
+  const logsWithIndex = conditionsArray.map((log, index) => ({ ...log, originalIndex: index }));
+  const sortedLogs = logsWithIndex.reverse();
+  
   let html = "";
   sortedLogs.forEach((log) => {
-    // แยกประมวลผลกรณีที่มีรูปภาพเดียว (แบบเดิม) หรือมีอาร์เรย์ของรูปภาพหลายรูป (แบบใหม่)
     let imagesHtml = "";
-    if (log.images && Array.isArray(log.images)) {
+    
+    if (log.imagesJoined && typeof log.imagesJoined === 'string') {
+      const imgList = log.imagesJoined.split("||");
       imagesHtml = `<div class="grid grid-cols-2 gap-2 mt-2">`;
-      log.images.forEach((imgSrc) => {
-        imagesHtml += `
-          <div class="overflow-hidden rounded-xl border border-orange-200 bg-white">
-            <a href="${imgSrc}" target="_blank">
-              <img src="${imgSrc}" class="w-full h-40 object-cover hover:scale-105 transition duration-300" onerror="this.src='https://placehold.co/600x400?text=รูปภาพไม่ถูกต้อง'"/>
-            </a>
-          </div>`;
+      imgList.forEach((imgSrc) => {
+        if (imgSrc.trim() !== "") {
+          imagesHtml += `
+            <div class="overflow-hidden rounded-xl border border-orange-200 bg-white">
+              <a href="${imgSrc}" target="_blank">
+                <img src="${imgSrc}" class="w-full h-40 object-cover hover:scale-105 transition duration-300" onerror="this.src='https://placehold.co/600x400?text=รูปภาพไม่ถูกต้อง'"/>
+              </a>
+            </div>`;
+        }
       });
       imagesHtml += `</div>`;
     } else if (log.image) {
@@ -274,10 +281,16 @@ function renderTimeline(conditionsArray) {
         </div>`;
     }
 
+    // เจนเนอเรตปุ่มลบ (ลบส่วนนี้) ในหน้าอินเทอร์เฟซ โดยควบคุมสถานะการมองเห็นตามสิทธิ์ล็อกอินหลังบ้าน
+    const deleteBtnHtml = isOwnerLoggedIn 
+      ? `<button onclick="deleteConditionLog(${log.originalIndex})" class="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-full transition">❌ ลบส่วนนี้</button>` 
+      : "";
+
     html += `
-      <div class="bg-orange-50 rounded-2xl p-5 border border-orange-100 space-y-3 transition hover:shadow-md">
+      <div class="bg-orange-50 rounded-2xl p-5 border border-orange-100 space-y-3 transition hover:shadow-md relative">
         <div class="flex justify-between items-center">
           <span class="text-orange-500 font-bold text-sm bg-orange-100 px-3 py-1 rounded-full">📅 ${log.date}</span>
+          ${deleteBtnHtml}
         </div>
         <p class="text-gray-700 text-base leading-relaxed whitespace-pre-line">${log.content}</p>
         ${imagesHtml}
@@ -287,13 +300,35 @@ function renderTimeline(conditionsArray) {
   container.innerHTML = html;
 }
 
-// 🔐 ระบบยืนยันตัวตนผู้ดูแลแบบล็อกอิน (Username & Password)
+// ฟังก์ชันสั่งลบบันทึกอาการรายวันตัวที่ต้องการ 🗑️
+async function deleteConditionLog(targetIndex) {
+  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
+  
+  if (confirm("⚠️ คุณแน่ใจใช่ไหมว่าต้องการลบบันทึกอาการของวันนี้ทิ้งอย่างถาวร?")) {
+    try {
+      // คัดลอกอาร์เรย์หลักมาตัดสมาชิกตำแหน่งที่ต้องการลบออก 1 ตัว
+      let updatedArray = [...currentConditionsArray];
+      updatedArray.splice(targetIndex, 1);
+
+      // อัปเดตโครงสร้างข้อมูลใหม่ทับไปยัง Firebase เพื่อผลลัพธ์แบบเรียลไทม์
+      await liveDataRef.update({
+        conditions: updatedArray
+      });
+
+      alert("ลบข้อมูลบันทึกอาการวันดังกล่าวเรียบร้อยแล้วครับ! 🗑️");
+    } catch (error) {
+      alert("ไม่สามารถลบข้อมูลได้เนื่องจาก: " + error.message);
+    }
+  }
+}
+
 function handleAdminAuth() {
   if (isOwnerLoggedIn) {
     isOwnerLoggedIn = false;
     document.getElementById("ownerPanel").classList.add("hidden");
     document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
     document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
+    renderTimeline(currentConditionsArray); // สั่งรันรีเรนเดอร์เพื่อซ่อนปุ่มลบออก
     alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
   } else {
     const userInput = prompt("👤 กรุณากรอก 'ชื่อผู้ใช้' (Username) :");
@@ -307,6 +342,7 @@ function handleAdminAuth() {
       document.getElementById("ownerPanel").classList.remove("hidden");
       document.getElementById("loginBtn").innerHTML = "🚪 Logout (ผู้ดูแล)";
       document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
+      renderTimeline(currentConditionsArray); // สั่งรันรีเรนเดอร์เพื่อโชว์ปุ่มลบขึ้นมา
       alert("🔓 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณผู้ดูแลระบบครับ");
     } else {
       alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง! ปฏิเสธการเข้าถึง");
@@ -314,7 +350,6 @@ function handleAdminAuth() {
   }
 }
 
-// ฟังก์ชันแปลงไฟล์รูปภาพจากเครื่องให้เป็น String Base64 สำหรับจัดเก็บเข้าคลาวด์คิวขนาน
 function convertFileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -324,7 +359,6 @@ function convertFileToBase64(file) {
   });
 }
 
-// ฟังก์ชันเพิ่มอาการบันทึกประจำวันใหม่ลงฐานข้อมูล (ปรับปรุงฟอร์แมตวันที่ และอัปโหลดได้หลายรูปภาพ 📸)
 async function addNewConditionLog() {
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
   
@@ -337,19 +371,19 @@ async function addNewConditionLog() {
     return;
   }
 
-  // แปลงฟอร์แมตวันที่จากปฏิทินป๊อปอัป (YYYY-MM-DD) เป็นภาษาไทยให้อ่านง่ายขึ้น (เช่น 20 พฤษภาคม 2569)
   const dateObj = new Date(rawDateVal);
   const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
   const formattedThaiDate = `${dateObj.getDate()} ${thaiMonths[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
 
-  // วนลูปอ่านและแปลงค่ารูปภาพทุกรูปที่ถูกเลือกจากในคอมพิวเตอร์/มือถือ
-  let base64ImagesArray = [];
+  let imagesJoinedString = "";
   if (filesInput.files && filesInput.files.length > 0) {
     try {
+      let base64List = [];
       for (let i = 0; i < filesInput.files.length; i++) {
         const base64Str = await convertFileToBase64(filesInput.files[i]);
-        base64ImagesArray.push(base64Str);
+        base64List.push(base64Str);
       }
+      imagesJoinedString = base64List.join("||");
     } catch (e) {
       alert("เกิดข้อผิดพลาดในการประมวลผลไฟล์ภาพของคุณ");
       return;
@@ -358,7 +392,7 @@ async function addNewConditionLog() {
 
   const newLog = {
     date: formattedThaiDate,
-    images: base64ImagesArray.length > 0 ? base64ImagesArray : null,
+    imagesJoined: imagesJoinedString !== "" ? imagesJoinedString : null,
     content: contentVal
   };
 
@@ -367,7 +401,6 @@ async function addNewConditionLog() {
       conditions: firebase.firestore.FieldValue.arrayUnion(newLog)
     });
     
-    // ล้างข้อมูลในฟอร์มหลังบันทึกสำเร็จ
     document.getElementById("newLogDate").value = "";
     document.getElementById("newLogImagesInput").value = "";
     document.getElementById("newLogContent").value = "";
@@ -378,7 +411,6 @@ async function addNewConditionLog() {
   }
 }
 
-// ฟังก์ชันบันทึกข้อมูลการเงินหลัก
 async function updateFinance(){
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
 
@@ -398,7 +430,6 @@ async function updateFinance(){
   }
 }
 
-// ฟังก์ชันสลับเปิด-ปิดระบบรับบริจาค
 async function toggleDonation(){
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
   try {
