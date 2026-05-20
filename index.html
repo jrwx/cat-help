@@ -23,6 +23,13 @@
       background:rgba(255,255,255,.75);
       backdrop-filter:blur(12px);
     }
+    /* ล็อกตำแหน่งกล่องให้อยู่กับที่แบบคงที่ ไม่เบี้ยวขยับโยกเยก */
+    .sticky-box {
+      position: -webkit-sticky;
+      position: sticky;
+      top: 6rem;
+      align-self: start;
+    }
   </style>
 </head>
 
@@ -178,7 +185,7 @@
 
 <section id="donationSection" class="max-w-6xl mx-auto px-5 py-10">
   <div class="grid md:grid-cols-2 gap-8 items-start">
-    <div id="qrBox" class="bg-white rounded-3xl shadow-xl overflow-hidden md:sticky md:top-24 border border-orange-100">
+    <div id="qrBox" class="bg-white rounded-3xl shadow-xl overflow-hidden border border-orange-100 sticky-box">
       <div class="bg-orange-500 text-white p-6">
         <h2 class="text-3xl font-bold">💳 ช่องทางการโอนบริจาค</h2>
       </div>
@@ -210,7 +217,7 @@
     
     <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
       <div class="bg-orange-50 p-6">
-        <h2 class="text-3xl font-bold">🏥 บันทึกอาการวันต่อวัน</h2>
+        <h2 class="text-3xl font-bold">🏥 บันทึกอาการน้องแมว</h2>
       </div>
       <div id="timelineContainer" class="p-8 space-y-6 max-h-[600px] overflow-y-auto">
         <p class="text-gray-400 text-center">กำลังโหลดข้อมูลไทม์ไลน์...</p>
@@ -234,7 +241,6 @@
               <th class="p-4 font-semibold text-center">หลักฐาน</th>
               <th class="p-4 font-semibold text-right">รายรับ (+)</th>
               <th class="p-4 font-semibold text-right">รายจ่าย (-)</th>
-              <!-- ส่วนหัวคอลัมน์ "จัดการ" จะถูกควบคุมการแสดงผลผ่าน JavaScript โดยเริ่มต้นจะถูกซ่อนไว้ -->
               <th id="thAction" class="p-4 font-semibold text-center hidden">จัดการ</th>
             </tr>
           </thead>
@@ -320,7 +326,7 @@ const financeCollectionRef = db.collection("finance_ledgers");
 let isOwnerLoggedIn = false;
 let donationOpen = true;
 let currentSlipDataMap = {}; 
-let globalFinanceItems = []; // เก็บตัวแปรส่วนกลางสำหรับวาดตารางใหม่เมื่อกด Login/Logout
+let globalFinanceItems = []; 
 
 function openImageModal(docId) {
   const base64Data = currentSlipDataMap[docId];
@@ -346,13 +352,12 @@ liveDataRef.onSnapshot((doc) => {
   }
 });
 
-// ฟังก์ชันวาดตารางรายรับ-รายจ่ายใหม่ตามสถานะล็อกอิน
+// ฟังก์ชันวาดตารางรายรับ-รายจ่ายใหม่ตามสถานะล็อกอิน เพื่อซ่อน/แสดงช่อง "จัดการ"
 function renderFinanceTable() {
   const tableBody = document.getElementById("financeTableBody");
   const thAction = document.getElementById("thAction");
   const tdLoading = document.getElementById("tdLoading");
 
-  // ควบคุมหัวคอลัมน์ "จัดการ" หลังเว็บ/หน้าเว็บ
   if (isOwnerLoggedIn) {
     thAction.classList.remove("hidden");
     if(tdLoading) tdLoading.setAttribute("colspan", "6");
@@ -376,7 +381,7 @@ function renderFinanceTable() {
       ? `<button onclick="openImageModal('finance_${item.id}')" class="bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold px-2.5 py-1 rounded-xl text-xs transition flex items-center gap-1 mx-auto">📸 ดูหลักฐาน</button>`
       : `<span class="text-gray-300 text-xs">- ไม่มี -</span>`;
 
-    // ถ้าเข้าสู่ระบบ ให้แสดงคอลัมน์ลบ ถ้าเป็นหน้าเว็บทั่วไปจะไม่เรนเดอร์แท็ก <td> ส่วนนี้ออกมาเลย
+    // คอลัมน์ปุ่มลบจะแสดงเฉพาะเจ้าของระบบเท่านั้น
     const actionCellHtml = isOwnerLoggedIn 
       ? `<td class="p-4 text-center">
           <button onclick="deleteTransaction('${item.id}')" class="bg-red-50 hover:bg-red-100 text-red-500 text-xs px-2.5 py-1.5 rounded-lg font-bold transition border border-red-200 shadow-sm">
@@ -399,7 +404,7 @@ function renderFinanceTable() {
   tableBody.innerHTML = html;
 }
 
-// 2. ดึงข้อมูลรายรับ-รายจ่ายวันต่อวันแบบ Realtime + คำนวณยอดอัตโนมัติ
+// 2. ดึงข้อมูลรายรับ-รายจ่ายวันต่อวันแบบ Realtime + คำนวณยอดและตัดเงินทันที
 financeCollectionRef.onSnapshot((snapshot) => {
   let totalIn = 0;
   let totalOut = 0;
@@ -420,19 +425,33 @@ financeCollectionRef.onSnapshot((snapshot) => {
     }
   });
 
-  // คำนวณยอดคงเหลือใหม่แบบ Realtime
   const balance = totalIn - totalOut;
   document.getElementById("totalDonation").innerHTML = totalIn.toLocaleString() + " บาท";
   document.getElementById("totalExpense").innerHTML = totalOut.toLocaleString() + " บาท";
   document.getElementById("balanceAmount").innerHTML = balance.toLocaleString() + " บาท";
 
   globalFinanceItems.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-  
-  // เรียกวาดตาราง
   renderFinanceTable();
 });
 
-// 3. ดึงข้อมูลบันทึกอาการวันต่อวัน
+// 3. ฟังก์ชันลบรายการและหักคำนวณตัดเงินออกจากระบบอัตโนมัติ 
+async function deleteTransaction(itemId) {
+  if (!isOwnerLoggedIn) {
+    alert("❌ คุณไม่มีสิทธิ์เข้าถึงฟังก์ชันลบ!");
+    return;
+  }
+
+  if (confirm("⚠️ ยืนยันลบรายการนี้ใช่ไหมครับ? ข้อมูลเงินของการ์ดรายรับ/คงเหลือ ด้านบนจะถูกหักลบและปรับปรุงทันทีกระทบแบบ Realtime")) {
+    try {
+      await financeCollectionRef.doc(itemId).delete();
+      alert("🗑️ ลบรายการเงินออกจากบัญชี และคำนวณยอดเงินรวมใหม่เรียบร้อยแล้วครับ!");
+    } catch (error) {
+      alert("เกิดข้อผิดพลาดไม่สามารถลบรายการได้: " + error.message);
+    }
+  }
+}
+
+// 4. ดึงข้อมูลบันทึกอาการ
 logsCollectionRef.onSnapshot(async (snapshot) => {
   const docs = [];
   const fetchPromises = [];
@@ -456,7 +475,7 @@ logsCollectionRef.onSnapshot(async (snapshot) => {
   renderTimelineFromDocs(docs);
 });
 
-// 4. ดึงข้อมูลคิวสลิปบริจาคหลังบ้านแบบ Realtime
+// 5. ดึงคิวสลิป
 slipsCollectionRef.onSnapshot((snapshot) => {
   const tableBody = document.getElementById("slipTableBody");
   if (snapshot.empty) {
@@ -502,7 +521,7 @@ slipsCollectionRef.onSnapshot((snapshot) => {
   tableBody.innerHTML = html;
 });
 
-// 💵 ฟังก์ชันเพิ่มบันทึกรายรับ-รายจ่ายจากมือ Admin เอง
+// ฟังก์ชันเพิ่มบันทึกรายรับ-รายจ่าย
 async function addNewTransaction() {
   const rawDate = document.getElementById("transDate").value;
   const type = document.getElementById("transType").value;
@@ -512,7 +531,7 @@ async function addNewTransaction() {
   const btn = document.getElementById("addTransBtn");
 
   if (!rawDate || !amount || !detail || amount <= 0) {
-    alert("กรุณากรอกข้อมูล วันที่, จำนวนเงิน, และรายละเอียดรายการให้ครบถ้วนครับ");
+    alert("กรุณากรอกข้อมูลให้ครบถ้วนครับ");
     return;
   }
 
@@ -541,29 +560,12 @@ async function addNewTransaction() {
     document.getElementById("transAmount").value = "";
     document.getElementById("transDetail").value = "";
     receiptInput.value = "";
-    alert("💸 บันทึกรายการเงินลงสมุดบัญชีเรียบร้อย ยอดรวมคำนวณใหม่แล้วครับ!");
+    alert("💸 บันทึกเรียบร้อย!");
   } catch (error) {
-    alert("ไม่สามารถบันทึกรายการเงินได้เนื่องจาก: " + error.message);
+    alert("ไม่สามารถบันทึกได้เนื่องจาก: " + error.message);
   } finally {
     btn.disabled = false;
     btn.innerHTML = "✨ บันทึกรายการเงินนี้เข้าระบบบัญชีวันต่อวัน";
-  }
-}
-
-// 🗑️ ฟังก์ชันลบรายการบัญชี (ล็อคความปลอดภัยสองชั้น ป้องกันการยิง Console บั๊ก)
-async function deleteTransaction(itemId) {
-  if (!isOwnerLoggedIn) {
-    alert("❌ คุณไม่มีสิทธิ์ลบรายการนี้!");
-    return;
-  }
-
-  if (confirm("⚠️ คุณต้องการลบรายการบัญชีรายรับ-รายจ่ายชิ้นนี้ใช่หรือไม่? (ยอดบริจาคและยอดคงเหลือจะถูกปรับปรุงลดลงอัตโนมัติ)")) {
-    try {
-      await financeCollectionRef.doc(itemId).delete();
-      alert("ลบรายการเงินออกจากระบบบัญชีเรียบร้อย ยอดคงเหลือถูกหักและคำนวณใหม่ให้แล้วครับ!");
-    } catch (error) {
-      alert("ไม่สามารถลบรายการได้: " + error.message);
-    }
   }
 }
 
@@ -625,7 +627,7 @@ function handleAdminAuth() {
     document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
     document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
     alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
-    renderFinanceTable(); // รีเฟรชตารางเพื่อซ่อนคอลัมน์ จัดการ ทันที
+    renderFinanceTable(); 
   } else {
     const userInput = prompt("👤 กรุณากรอก 'ชื่อผู้ใช้' (Username) :");
     if (userInput === null) return; 
@@ -638,9 +640,9 @@ function handleAdminAuth() {
       document.getElementById("loginBtn").innerHTML = "🚪 Logout (ผู้ดูแล)";
       document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
       alert("🔓 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณผู้ดูแลระบบครับ");
-      renderFinanceTable(); // รีเฟรชตารางเพื่อแสดงคอลัมน์ จัดการ ทันที
+      renderFinanceTable(); 
     } else {
-      alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง! ปฏิเสธการเข้าถึง");
+      alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง!");
     }
   }
 }
@@ -691,7 +693,7 @@ async function addNewConditionLog(){
   const btn=document.getElementById("addLogBtn");
 
   if(!rawDate||!content){
-    alert("กรอกวันที่และอาการก่อน");
+    alert("กรอกข้อมูลให้ครบก่อน");
     return;
   }
   btn.disabled=true;
@@ -723,7 +725,6 @@ async function addNewConditionLog(){
     document.getElementById("newLogContent").value="";
     document.getElementById("newLogImagesInput").value="";
     alert("บันทึกอาการเรียบร้อย");
-    window.scrollTo({top:700,behavior:"smooth"});
   }catch(error){
     alert(error.message);
   }
@@ -733,7 +734,7 @@ async function addNewConditionLog(){
 
 async function deleteConditionLog(logId) {
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
-  if (confirm("⚠️ คุณแน่ใจใช่ไหมว่าต้องการลบบันทึกอาการของวันนี้ทิ้งอย่างถาวร?")) {
+  if (confirm("⚠️ ต้องการลบบันทึกอาการใช่ไหม?")) {
     try {
       const imgSnapshot = await logsCollectionRef.doc(logId).collection("images").get();
       const deletePromises = [];
@@ -742,14 +743,13 @@ async function deleteConditionLog(logId) {
       });
       await Promise.all(deletePromises);
       await logsCollectionRef.doc(logId).delete();
-      alert("ลบข้อมูลบันทึกอาการเรียบร้อยแล้วครับ!");
+      alert("ลบข้อมูลเรียบร้อยแล้วครับ!");
     } catch (error) {
       alert("ไม่สามารถลบข้อมูลได้เนื่องจาก: " + error.message);
     }
   }
 }
 
-// 📤 ฟังก์ชันส่งสลิปบริจาค
 async function submitDonationSlip() {
   const nameInput = document.getElementById("slipDonorNameInput");
   const amtInput = document.getElementById("slipAmountInput");
@@ -761,16 +761,16 @@ async function submitDonationSlip() {
   const donorNameVal = nameInput.value.trim();
 
   if (!amtInput.value || amountVal <= 0) {
-    alert("❌ กรุณาระบุจำนวนเงินที่โอนให้ถูกต้องด้วยนะคะพี่พี่");
+    alert("❌ กรุณาระบุจำนวนเงินให้ถูกต้อง");
     return;
   }
   if (!fileInput.files || fileInput.files.length === 0) {
-    alert("❌ กรุณาเลือกไฟล์รูปภาพสลิปธนาคารก่อนกดส่งนะคะพี่พี่");
+    alert("❌ กรุณาเลือกไฟล์สลิป");
     return;
   }
 
   submitBtn.disabled = true;
-  submitBtn.innerHTML = "⏳ กำลังส่งหลักฐานและบวกยอดเงิน...";
+  submitBtn.innerHTML = "⏳ กำลังส่งหลักฐาน...";
 
   try {
     const compressedSlipBase64 = await compressAndResizeImage(fileInput.files[0]);
@@ -780,7 +780,6 @@ async function submitDonationSlip() {
     const thaiMonthsShort = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
     const formattedThaiDate = `${dateObj.getDate()} ${thaiMonthsShort[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
 
-    // 1. ส่งข้อมูลเข้าคิวสลิปหลังบ้าน
     await slipsCollectionRef.add({
       donorName: donorNameVal || "",
       amount: amountVal,
@@ -789,7 +788,6 @@ async function submitDonationSlip() {
       timestamp: nowTimestamp
     });
 
-    // 2. แทรกข้อมูลเข้าตารางบัญชี "รายรับ-รายจ่าย" อัตโนมัติ
     let displayDonorName = donorNameVal ? `คุณ ${donorNameVal}` : "คุณผู้ใจดี";
     let commentStr = `${displayDonorName} ร่วมบริจาค `;
     
@@ -810,7 +808,7 @@ async function submitDonationSlip() {
     amtInput.value = "";
     fileInput.value = "";
     msgInput.value = "";
-    alert("💖 บันทึกยอดเงินในชื่อของคุณพี่เรียบร้อยแล้ว ขอบคุณสำหรับความเมตตาแทนน้องแมวด้วยน้า!");
+    alert("💖 ส่งสลิปเรียบร้อย ขอบคุณมากครับ!");
   } catch (error) {
     alert("เกิดข้อผิดพลาดในการส่งข้อมูล: " + error.message);
   } finally {
@@ -821,10 +819,10 @@ async function submitDonationSlip() {
 
 async function deleteSlip(docId) {
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
-  if (confirm("คุณต้องการลบสลิปนี้ออกจากคิวตรวจสอบใช่ไหม? (ไม่ส่งผลกระทบต่อยอดเงินที่บันทึกในตารางบัญชีไปแล้ว)")) {
+  if (confirm("ต้องการลบสลิปนี้ออกจากคิวตรวจสอบใช่ไหม?")) {
     try {
       await slipsCollectionRef.doc(docId).delete();
-      alert("ลบรายการสลิปจากคิวเรียบร้อยจ้า");
+      alert("ลบรายการสลิปเรียบร้อย");
     } catch (error) {
       alert("ไม่สามารถลบสลิปได้: " + error.message);
     }
