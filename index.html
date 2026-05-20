@@ -5,466 +5,185 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ช่วยน้องแมวจร 🐱</title>
 
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
   <style>
-
     body{
       font-family:'Prompt',sans-serif;
       background:#fffaf7;
       color:#333;
     }
-
     .glass{
       background:rgba(255,255,255,.75);
       backdrop-filter:blur(12px);
     }
-
   </style>
-
 </head>
 
 <body>
 
-<!-- NAVBAR -->
 <nav class="fixed top-0 left-0 right-0 z-50 glass border-b border-orange-100">
-
   <div class="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
-
     <div class="flex items-center gap-3">
-
-      <div class="text-4xl">
-        🐱
-      </div>
-
+      <div class="text-4xl">🐱</div>
       <div>
-
-        <div class="font-bold text-xl">
-          ช่วยน้องแมวจร
-        </div>
-
-        <div class="text-sm text-gray-500">
-          อัปเดตการรักษาน้องแมว
-        </div>
-
+        <div class="font-bold text-xl">ช่วยน้องแมวจร</div>
+        <div class="text-sm text-gray-500">อัปเดตการรักษาน้องแมว</div>
       </div>
-
     </div>
-
     <button
       id="loginBtn"
       onclick="loginWithGoogle()"
       class="bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold">
-
       🔐 Owner Login
-
     </button>
-
   </div>
-
 </nav>
 
-<!-- HERO -->
 <section class="relative h-screen overflow-hidden">
-
-  <img
-    src="https://raw.githubusercontent.com/jrwx/cat-help/main/cat.jpeg"
-    class="w-full h-full object-cover"
-  />
-
+  <img src="https://raw.githubusercontent.com/jrwx/cat-help/main/cat.jpeg" class="w-full h-full object-cover" />
   <div class="absolute inset-0 bg-black/50"></div>
-
   <div class="absolute inset-0 flex items-center justify-center px-6">
-
     <div class="text-center text-white max-w-4xl">
-
-      <div class="text-7xl mb-5">
-        🐾
-      </div>
-
-      <h1 class="text-5xl md:text-7xl font-bold leading-tight">
-        ช่วยน้องแมวจร
-      </h1>
-
+      <div class="text-7xl mb-5">🐾</div>
+      <h1 class="text-5xl md:text-7xl font-bold leading-tight">ช่วยน้องแมวจร</h1>
       <p class="mt-6 text-lg md:text-2xl text-white/90 leading-relaxed">
-
-        อัปเดตค่ารักษา อาการล่าสุด
-        และรายรับรายจ่ายของน้องแมว
-
+        อัปเดตค่ารักษา อาการล่าสุด และรายรับรายจ่ายของน้องแมว
       </p>
-
-      <!-- STATUS -->
-      <div
-        id="statusBox"
-        class="mt-8 inline-flex items-center gap-3 bg-green-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl">
-
+      <div id="statusBox" class="mt-8 inline-flex items-center gap-3 bg-green-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl">
         💖 เปิดรับบริจาคอยู่
-
       </div>
-
     </div>
-
   </div>
-
 </section>
 
-<!-- SUMMARY -->
 <section class="max-w-6xl mx-auto px-5 -mt-24 relative z-20">
-
   <div class="grid md:grid-cols-3 gap-6">
-
-    <!-- DONATION -->
     <div class="bg-white rounded-3xl shadow-xl p-8 text-center">
-
-      <div class="text-5xl mb-4">
-        💰
-      </div>
-
-      <div class="text-gray-500 text-lg">
-        ยอดบริจาคทั้งหมด
-      </div>
-
-      <div
-        id="totalDonation"
-        class="text-4xl font-bold mt-4 text-orange-500">
-
-        12,500 บาท
-
-      </div>
-
+      <div class="text-5xl mb-4">💰</div>
+      <div class="text-gray-500 text-lg">ยอดบริจาคทั้งหมด</div>
+      <div id="totalDonation" class="text-4xl font-bold mt-4 text-orange-500">กำลังโหลด...</div>
     </div>
-
-    <!-- EXPENSE -->
     <div class="bg-white rounded-3xl shadow-xl p-8 text-center">
-
-      <div class="text-5xl mb-4">
-        🏥
-      </div>
-
-      <div class="text-gray-500 text-lg">
-        ค่ารักษาที่ใช้ไป
-      </div>
-
-      <div
-        id="totalExpense"
-        class="text-4xl font-bold mt-4 text-red-500">
-
-        5,200 บาท
-
-      </div>
-
+      <div class="text-5xl mb-4">🏥</div>
+      <div class="text-gray-500 text-lg">ค่ารักษาที่ใช้ไป</div>
+      <div id="totalExpense" class="text-4xl font-bold mt-4 text-red-500">กำลังโหลด...</div>
     </div>
-
-    <!-- BALANCE -->
     <div class="bg-white rounded-3xl shadow-xl p-8 text-center">
-
-      <div class="text-5xl mb-4">
-        🐾
-      </div>
-
-      <div class="text-gray-500 text-lg">
-        เงินคงเหลือ
-      </div>
-
-      <div
-        id="balanceAmount"
-        class="text-4xl font-bold mt-4 text-green-500">
-
-        7,300 บาท
-
-      </div>
-
+      <div class="text-5xl mb-4">🐾</div>
+      <div class="text-gray-500 text-lg">เงินคงเหลือ</div>
+      <div id="balanceAmount" class="text-4xl font-bold mt-4 text-green-500">กำลังโหลด...</div>
     </div>
-
   </div>
-
 </section>
 
-<!-- OWNER DASHBOARD -->
-<section
-  id="ownerPanel"
-  class="hidden max-w-6xl mx-auto px-5 py-12">
-
+<section id="ownerPanel" class="hidden max-w-6xl mx-auto px-5 py-12">
   <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-orange-100">
-
     <div class="bg-orange-500 text-white p-6">
-
-      <h2 class="text-3xl font-bold">
-        🔐 Owner Dashboard
-      </h2>
-
-      <p class="mt-2 text-white/80">
-        สำหรับเจ้าของเว็บเท่านั้น
-      </p>
-
+      <h2 class="text-3xl font-bold">🔐 Owner Dashboard</h2>
+      <p class="mt-2 text-white/80">สำหรับเจ้าของเว็บเท่านั้น (พิมพ์แก้ไขข้อมูลหน้าเว็บได้จากที่นี่)</p>
     </div>
-
     <div class="p-8 space-y-5">
-
-      <!-- DONATION -->
       <div>
-
-        <label class="font-semibold block mb-2">
-          ยอดบริจาคทั้งหมด
-        </label>
-
-        <input
-          id="donationInput"
-          type="number"
-          placeholder="เช่น 12500"
-          class="w-full p-4 rounded-2xl border border-orange-200"
-        />
-
+        <label class="font-semibold block mb-2">ยอดบริจาคทั้งหมด (บาท)</label>
+        <input id="donationInput" type="number" placeholder="เช่น 12500" class="w-full p-4 rounded-2xl border border-orange-200" />
       </div>
-
-      <!-- EXPENSE -->
       <div>
-
-        <label class="font-semibold block mb-2">
-          ค่ารักษาที่ใช้ไป
-        </label>
-
-        <input
-          id="expenseInput"
-          type="number"
-          placeholder="เช่น 5200"
-          class="w-full p-4 rounded-2xl border border-orange-200"
-        />
-
+        <label class="font-semibold block mb-2">ค่ารักษาที่ใช้ไป (บาท)</label>
+        <input id="expenseInput" type="number" placeholder="เช่น 5200" class="w-full p-4 rounded-2xl border border-orange-200" />
       </div>
-
-      <!-- DETAIL -->
       <div>
-
-        <label class="font-semibold block mb-2">
-          รายละเอียดค่าใช้จ่าย
-        </label>
-
-        <textarea
-          id="expenseDetail"
-          rows="6"
-          placeholder="เช่น
-- ค่ายาฆ่าเชื้อ 1,200 บาท
-- ค่าล้างตา 800 บาท"
-          class="w-full p-4 rounded-2xl border border-orange-200"></textarea>
-
+        <label class="font-semibold block mb-2">รายละเอียดค่าใช้จ่าย</label>
+        <textarea id="expenseDetail" rows="4" placeholder="- ค่ายา 1,200 บาท" class="w-full p-4 rounded-2xl border border-orange-200"></textarea>
       </div>
-
-      <!-- UPDATE -->
-      <button
-        onclick="updateFinance()"
-        class="w-full bg-orange-500 hover:bg-orange-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
-
-        💾 บันทึกข้อมูล
-
+      <div>
+        <label class="font-semibold block mb-2">อัปเดตอาการล่าสุดของน้อง</label>
+        <textarea id="catConditionInput" rows="3" placeholder="วันนี้น้องอาการดีขึ้น..." class="w-full p-4 rounded-2xl border border-orange-200"></textarea>
+      </div>
+      <button onclick="updateFinance()" class="w-full bg-orange-500 hover:bg-orange-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
+        💾 บันทึกข้อมูลลงหน้าเว็บ
       </button>
-
-      <!-- TOGGLE -->
-      <button
-        id="toggleBtn"
-        onclick="toggleDonation()"
-        class="w-full bg-red-500 hover:bg-red-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
-
+      <button id="toggleBtn" onclick="toggleDonation()" class="w-full bg-red-500 hover:bg-red-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
         🔴 ปิดรับบริจาคชั่วคราว
-
       </button>
-
     </div>
-
   </div>
-
 </section>
 
-<!-- DONATION -->
-<section
-  id="donationSection"
-  class="max-w-6xl mx-auto px-5 py-10">
-
+<section id="donationSection" class="max-w-6xl mx-auto px-5 py-10">
   <div class="grid md:grid-cols-2 gap-8">
-
-    <!-- QR -->
     <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
-
       <div class="bg-orange-500 text-white p-6">
-
-        <h2 class="text-3xl font-bold">
-          💳 บริจาคช่วยน้อง
-        </h2>
-
+        <h2 class="text-3xl font-bold">💳 บริจาคช่วยน้อง</h2>
       </div>
-
       <div class="p-8 text-center">
-
-        <img
-          src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=PromptPay"
-          class="w-64 mx-auto rounded-3xl shadow-lg"
-        />
-
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=PromptPay" class="w-64 mx-auto rounded-3xl shadow-lg" />
         <div class="mt-6">
-
-          <div class="text-gray-500">
-            พร้อมเพย์
-          </div>
-
-          <div class="text-3xl font-bold mt-2">
-            081-234-5678
-          </div>
-
-          <div class="mt-3 text-gray-600">
-            ชื่อบัญชี: YOUR NAME
-          </div>
-
+          <div class="text-gray-500">พร้อมเพย์</div>
+          <div class="text-3xl font-bold mt-2">081-234-5678</div>
+          <div class="mt-3 text-gray-600">ชื่อบัญชี: YOUR NAME</div>
         </div>
-
       </div>
-
     </div>
-
-    <!-- CAT INFO -->
     <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
-
       <div class="bg-orange-50 p-6">
-
-        <h2 class="text-3xl font-bold">
-          🏥 อาการล่าสุด
-        </h2>
-
+        <h2 class="text-3xl font-bold">🏥 อาการล่าสุด</h2>
       </div>
-
       <div class="p-8">
-
         <div class="bg-orange-50 rounded-2xl p-5">
-
-          <div class="text-orange-500 font-semibold">
-            20 พฤษภาคม 2026
-          </div>
-
-          <div class="mt-3 text-lg leading-relaxed">
-
-            วันนี้น้องเริ่มกินอาหารได้เองแล้ว
-            หลังจากล้างแผลและให้ยาฆ่าเชื้อ
-
-          </div>
-
+          <div class="text-orange-500 font-semibold">อัปเดตล่าสุด</div>
+          <div id="catConditionText" class="mt-3 text-lg leading-relaxed">กำลังโหลดข้อมูลอาการล่าสุด...</div>
         </div>
-
       </div>
-
     </div>
-
   </div>
-
 </section>
 
-<!-- EXPENSE LIST -->
 <section class="max-w-6xl mx-auto px-5 pb-16">
-
   <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
-
     <div class="bg-orange-50 p-6">
-
-      <h2 class="text-3xl font-bold">
-        📋 รายการค่ารักษา
-      </h2>
-
+      <h2 class="text-3xl font-bold">📋 รายการค่ารักษา</h2>
     </div>
-
     <div class="p-8">
-
-      <div
-        id="expenseList"
-        class="whitespace-pre-line text-lg leading-relaxed text-gray-700">
-
-- ค่ายาฆ่าเชื้อ 1,200 บาท
-- ค่าล้างตา 800 บาท
-- ค่าอาหาร 500 บาท
-
-      </div>
-
+      <div id="expenseList" class="whitespace-pre-line text-lg leading-relaxed text-gray-700">กำลังโหลด...</div>
     </div>
-
   </div>
-
 </section>
 
-<!-- SLIP -->
-<section
-  id="slipSection"
-  class="pb-20">
-
+<section id="slipSection" class="pb-20">
   <div class="max-w-3xl mx-auto px-5">
-
     <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
-
       <div class="bg-orange-500 text-white p-6 text-center">
-
-        <h2 class="text-3xl font-bold">
-          📤 แนบสลิปบริจาค
-        </h2>
-
+        <h2 class="text-3xl font-bold">📤 แนบสลิปบริจาค</h2>
       </div>
-
       <div class="p-8 space-y-5">
-
-        <input
-          type="file"
-          class="w-full p-4 rounded-2xl border border-orange-200"
-        />
-
-        <textarea
-          rows="4"
-          placeholder="ข้อความให้กำลังใจน้อง (ไม่บังคับ)"
-          class="w-full p-4 rounded-2xl border border-orange-200"></textarea>
-
-        <button
-          class="w-full bg-orange-500 hover:bg-orange-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
-
+        <input type="file" class="w-full p-4 rounded-2xl border border-orange-200" />
+        <textarea rows="4" placeholder="ข้อความให้กำลังใจน้อง (ไม่บังคับ)" class="w-full p-4 rounded-2xl border border-orange-200"></textarea>
+        <button class="w-full bg-orange-500 hover:bg-orange-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
           ส่งสลิป 💖
-
         </button>
-
       </div>
-
     </div>
-
   </div>
-
 </section>
 
-<!-- FOOTER -->
 <footer class="bg-orange-500 text-white py-10">
-
   <div class="max-w-5xl mx-auto px-5 text-center">
-
-    <div class="text-5xl mb-3">
-      🐾
-    </div>
-
-    <h3 class="text-3xl font-bold">
-      ขอบคุณทุกคนที่ช่วยน้องแมวจร
-    </h3>
-
-    <p class="mt-3 text-white/80">
-      ทุกการช่วยเหลือมีความหมายกับน้องมากจริง ๆ
-    </p>
-
+    <div class="text-5xl mb-3">🐾</div>
+    <h3 class="text-3xl font-bold">ขอบคุณทุกคนที่ช่วยน้องแมวจร</h3>
+    <p class="mt-3 text-white/80">ทุกการช่วยเหลือมีความหมายกับน้องมากจริง ๆ</p>
   </div>
-
 </footer>
 
-<!-- SCRIPT -->
 <script>
-
-  // FIREBASE CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyDLL5PYwQ3aHxeA-PszAh2x3mJxTUDXdpY",
   authDomain: "cat-help-18ffb.firebaseapp.com",
@@ -476,160 +195,116 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const liveDataRef = db.collection("cat_status").doc("live_data");
 
-firebase.auth().getRedirectResult()
-.then((result)=>{
+const allowedOwners = [
+  "j45phuarram@gmail.com",
+  "mhiwpharr@hotmail.com"
+];
 
-  const user = result.user;
+let donationOpen = true;
 
-  if(user){
+// ดึงข้อมูลแบบ Realtime จาก Firebase มาแสดงบนเว็บอัตโนมัติ
+liveDataRef.onSnapshot((doc) => {
+  if (doc.exists) {
+    const data = doc.data();
+    donationOpen = data.donationOpen;
+    const balance = data.totalDonation - data.totalExpense;
 
-    if(
-      allowedOwners.includes(user.email)
-    ){
+    // แสดงผลบนหน้าเว็บ
+    document.getElementById("totalDonation").innerHTML = data.totalDonation.toLocaleString() + " บาท";
+    document.getElementById("totalExpense").innerHTML = data.totalExpense.toLocaleString() + " บาท";
+    document.getElementById("balanceAmount").innerHTML = balance.toLocaleString() + " บาท";
+    document.getElementById("expenseList").innerText = data.expenseDetail;
+    document.getElementById("catConditionText").innerText = data.catCondition;
 
-      document
-      .getElementById("ownerPanel")
-      .classList.remove("hidden");
+    // ใส่ค่าล่าสุดรอกล่องกรอกข้อมูลของแอดมิน
+    document.getElementById("donationInput").value = data.totalDonation;
+    document.getElementById("expenseInput").value = data.totalExpense;
+    document.getElementById("expenseDetail").value = data.expenseDetail;
+    document.getElementById("catConditionInput").value = data.catCondition;
 
-      alert("เข้าสู่ระบบสำเร็จ");
-
-    }else{
-
-      alert("คุณไม่มีสิทธิ์");
-
-      firebase.auth().signOut();
-
-    }
-
+    updateDonationUI(donationOpen);
   }
-
-})
-.catch((error)=>{
-
-  console.log(error);
-
 });
 
-  // OWNER EMAIL
-  const allowedOwners = [
-
-    "j45phuarram@gmail.com",
-    "mhiwpharr@hotmail.com"
-
-  ];
-
-  // DONATION STATUS
-  let donationOpen = true;
-
-  // LOGIN
-async function loginWithGoogle(){
-
-  const provider =
-    new firebase.auth.GoogleAuthProvider();
-
-  try{
-
-    await firebase
-      .auth()
-      .signInWithRedirect(provider);
-
-  }catch(error){
-
-    console.log(error);
-
-    alert(error.message);
-
+// เช็คสถานะการ Login
+firebase.auth().getRedirectResult()
+.then((result)=>{
+  const user = result.user;
+  if(user){
+    if(allowedOwners.includes(user.email)){
+      document.getElementById("ownerPanel").classList.remove("hidden");
+      document.getElementById("loginBtn").innerHTML = "🔓 บัญชีผู้ดูแล: " + user.email;
+      alert("เข้าสู่ระบบสำเร็จ ช่องแก้ไขข้อมูลปรากฏขึ้นแล้วครับ");
+    }else{
+      alert("คุณไม่มีสิทธิ์เข้าใช้งานระบบผู้ดูแล");
+      firebase.auth().signOut();
+    }
   }
+})
+.catch((error)=>{ console.log(error); });
 
+async function loginWithGoogle(){
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try{
+    await firebase.auth().signInWithRedirect(provider);
+  }catch(error){
+    alert(error.message);
+  }
 }
 
+// แอดมินกดบันทึกจากหน้าเว็บ ค่าจะไปเซฟใน Firebase ให้เอง
+async function updateFinance(){
+  const donation = Number(document.getElementById("donationInput").value);
+  const expense = Number(document.getElementById("expenseInput").value);
+  const detail = document.getElementById("expenseDetail").value;
+  const condition = document.getElementById("catConditionInput").value;
 
-  // UPDATE FINANCE
-  function updateFinance(){
-
-    const donation =
-      Number(document.getElementById("donationInput").value);
-
-    const expense =
-      Number(document.getElementById("expenseInput").value);
-
-    const detail =
-      document.getElementById("expenseDetail").value;
-
-    const balance =
-      donation - expense;
-
-    // UPDATE UI
-    document.getElementById("totalDonation")
-      .innerHTML =
-      donation.toLocaleString() + " บาท";
-
-    document.getElementById("totalExpense")
-      .innerHTML =
-      expense.toLocaleString() + " บาท";
-
-    document.getElementById("balanceAmount")
-      .innerHTML =
-      balance.toLocaleString() + " บาท";
-
-    document.getElementById("expenseList")
-      .innerText =
-      detail;
-
-    alert("อัปเดตข้อมูลสำเร็จ");
-
+  try {
+    await liveDataRef.update({
+      totalDonation: donation,
+      totalExpense: expense,
+      expenseDetail: detail,
+      catCondition: condition
+    });
+    alert("อัปเดตข้อมูลหน้าเว็บสำเร็จแล้ว! 🎉");
+  } catch (error) {
+    alert("เกิดข้อผิดพลาด: " + error.message);
   }
+}
 
-  // TOGGLE DONATION
-  function toggleDonation(){
-
-    donationOpen = !donationOpen;
-
-    const statusBox =
-      document.getElementById("statusBox");
-
-    const donationSection =
-      document.getElementById("donationSection");
-
-    const slipSection =
-      document.getElementById("slipSection");
-
-    const toggleBtn =
-      document.getElementById("toggleBtn");
-
-    if(donationOpen){
-
-      statusBox.innerHTML =
-        "💖 เปิดรับบริจาคอยู่";
-
-      statusBox.className =
-        "mt-8 inline-flex items-center gap-3 bg-green-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
-
-      donationSection.style.display = "block";
-      slipSection.style.display = "block";
-
-      toggleBtn.innerHTML =
-        "🔴 ปิดรับบริจาคชั่วคราว";
-
-    }else{
-
-      statusBox.innerHTML =
-        "🙏 ปิดรับบริจาคชั่วคราว";
-
-      statusBox.className =
-        "mt-8 inline-flex items-center gap-3 bg-gray-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
-
-      donationSection.style.display = "none";
-      slipSection.style.display = "none";
-
-      toggleBtn.innerHTML =
-        "🟢 เปิดรับบริจาคอีกครั้ง";
-
-    }
-
+async function toggleDonation(){
+  try {
+    await liveDataRef.update({ donationOpen: !donationOpen });
+  } catch (error) {
+    alert("ไม่สามารถเปลี่ยนสถานะได้: " + error.message);
   }
+}
 
+function updateDonationUI(isOpen) {
+  const statusBox = document.getElementById("statusBox");
+  const donationSection = document.getElementById("donationSection");
+  const slipSection = document.getElementById("slipSection");
+  const toggleBtn = document.getElementById("toggleBtn");
+
+  if(isOpen){
+    statusBox.innerHTML = "💖 เปิดรับบริจาคอยู่";
+    statusBox.className = "mt-8 inline-flex items-center gap-3 bg-green-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
+    donationSection.style.display = "block";
+    slipSection.style.display = "block";
+    toggleBtn.innerHTML = "🔴 ปิดรับบริจาคชั่วคราว";
+    toggleBtn.className = "w-full bg-red-500 hover:bg-red-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg";
+  }else{
+    statusBox.innerHTML = "🙏 ปิดรับบริจาคชั่วคราว";
+    statusBox.className = "mt-8 inline-flex items-center gap-3 bg-gray-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
+    donationSection.style.display = "none";
+    slipSection.style.display = "none";
+    toggleBtn.innerHTML = "🟢 เปิดรับบริจาคอีกครั้ง";
+    toggleBtn.className = "w-full bg-green-500 hover:bg-green-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg";
+  }
+}
 </script>
 
 </body>
