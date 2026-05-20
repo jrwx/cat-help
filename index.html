@@ -543,31 +543,7 @@ async function loginWithGoogle(){
   }
 
 }
-      if(allowedOwners.includes(user.email)){
 
-        document
-          .getElementById("ownerPanel")
-          .classList.remove("hidden");
-
-        alert("เข้าสู่ระบบสำเร็จ");
-
-      }else{
-
-        alert("คุณไม่มีสิทธิ์");
-
-        firebase.auth().signOut();
-
-      }
-
-    }catch(error){
-
-      console.log(error);
-
-      alert("เกิดข้อผิดพลาด");
-
-    }
-
-  }
 
   // UPDATE FINANCE
   function updateFinance(){
