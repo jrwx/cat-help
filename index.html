@@ -23,7 +23,6 @@
       background:rgba(255,255,255,.75);
       backdrop-filter:blur(12px);
     }
-    /* ล็อกตำแหน่งกล่องให้อยู่กับที่แบบคงที่ ไม่เบี้ยวขยับโยกเยก */
     .sticky-box {
       position: -webkit-sticky;
       position: sticky;
@@ -306,6 +305,18 @@
 </footer>
 
 <script>
+// สั่งบังคับให้หน้าเว็บดึงมาอยู่ด้านบนสุดทันทีตั้งแต่เริ่มโหลดออบเจกต์ (ป้องกันเบราว์เซอร์จำสกรอลล์เก่า)
+if ('scrollRestoration' in history) {
+  history.scrollRestoration = 'manual';
+}
+window.scrollTo(0, 0);
+
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, 50);
+});
+
 const firebaseConfig = {
   apiKey: "AIzaSyDLL5PYwQ3aHxeA-PszAh2x3mJxTUDXdpY",
   authDomain: "cat-help-18ffb.firebaseapp.com",
@@ -343,7 +354,6 @@ function closeImageModal() {
   document.getElementById("modalTargetImage").src = "";
 }
 
-// 1. ดึงสถานะเปิด-ปิดรับบริจาคหลัก
 liveDataRef.onSnapshot((doc) => {
   if (doc.exists) {
     const data = doc.data();
@@ -352,7 +362,6 @@ liveDataRef.onSnapshot((doc) => {
   }
 });
 
-// ฟังก์ชันวาดตารางรายรับ-รายจ่ายใหม่ตามสถานะล็อกอิน เพื่อซ่อน/แสดงช่อง "จัดการ"
 function renderFinanceTable() {
   const tableBody = document.getElementById("financeTableBody");
   const thAction = document.getElementById("thAction");
@@ -381,7 +390,6 @@ function renderFinanceTable() {
       ? `<button onclick="openImageModal('finance_${item.id}')" class="bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold px-2.5 py-1 rounded-xl text-xs transition flex items-center gap-1 mx-auto">📸 ดูหลักฐาน</button>`
       : `<span class="text-gray-300 text-xs">- ไม่มี -</span>`;
 
-    // คอลัมน์ปุ่มลบจะแสดงเฉพาะเจ้าของระบบเท่านั้น
     const actionCellHtml = isOwnerLoggedIn 
       ? `<td class="p-4 text-center">
           <button onclick="deleteTransaction('${item.id}')" class="bg-red-50 hover:bg-red-100 text-red-500 text-xs px-2.5 py-1.5 rounded-lg font-bold transition border border-red-200 shadow-sm">
@@ -404,7 +412,6 @@ function renderFinanceTable() {
   tableBody.innerHTML = html;
 }
 
-// 2. ดึงข้อมูลรายรับ-รายจ่ายวันต่อวันแบบ Realtime + คำนวณยอดและตัดเงินทันที
 financeCollectionRef.onSnapshot((snapshot) => {
   let totalIn = 0;
   let totalOut = 0;
@@ -434,7 +441,6 @@ financeCollectionRef.onSnapshot((snapshot) => {
   renderFinanceTable();
 });
 
-// 3. ฟังก์ชันลบรายการและหักคำนวณตัดเงินออกจากระบบอัตโนมัติ 
 async function deleteTransaction(itemId) {
   if (!isOwnerLoggedIn) {
     alert("❌ คุณไม่มีสิทธิ์เข้าถึงฟังก์ชันลบ!");
@@ -451,7 +457,6 @@ async function deleteTransaction(itemId) {
   }
 }
 
-// 4. ดึงข้อมูลบันทึกอาการ
 logsCollectionRef.onSnapshot(async (snapshot) => {
   const docs = [];
   const fetchPromises = [];
@@ -475,7 +480,6 @@ logsCollectionRef.onSnapshot(async (snapshot) => {
   renderTimelineFromDocs(docs);
 });
 
-// 5. ดึงคิวสลิป
 slipsCollectionRef.onSnapshot((snapshot) => {
   const tableBody = document.getElementById("slipTableBody");
   if (snapshot.empty) {
@@ -521,7 +525,6 @@ slipsCollectionRef.onSnapshot((snapshot) => {
   tableBody.innerHTML = html;
 });
 
-// ฟังก์ชันเพิ่มบันทึกรายรับ-รายจ่าย
 async function addNewTransaction() {
   const rawDate = document.getElementById("transDate").value;
   const type = document.getElementById("transType").value;
