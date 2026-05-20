@@ -517,304 +517,202 @@ class="p-8 space-y-4">
 
 </footer>
 
+<!-- SCRIPT -->
 <script>
 
-firebase.initializeApp(firebaseConfig)
+const firebaseConfig = {
+ apiKey:"AIzaSyDLL5PYwQ3aHxeA-PszAh2x3mJxTUDXdpY",
+ authDomain:"cat-help-18ffb.firebaseapp.com",
+ projectId:"cat-help-18ffb",
+ storageBucket:"cat-help-18ffb.firebasestorage.app",
+ messagingSenderId:"545008804888",
+ appId:"1:545008804888:web:97d6c2c6dd228db8138f6d",
+ measurementId:"G-LEB15WNE0X"
+};
 
-const db=firebase.firestore()
-const storage=firebase.storage()
+if(!firebase.apps.length){
+ firebase.initializeApp(firebaseConfig);
+}
 
 const allowedOwners=[
 "j45phuarram@gmail.com",
 "mhiwpharr@hotmail.com"
-]
+];
 
-let donationOpen=true
+let donationOpen=true;
 
-firebase.auth().onAuthStateChanged(async(user)=>{
+firebase.auth().onAuthStateChanged(user=>{
 
-const btn=document.getElementById("loginBtn")
+ const btn=document.getElementById("loginBtn");
 
-if(user){
+ if(user){
 
-if(allowedOwners.includes(user.email)){
+   if(allowedOwners.includes(user.email)){
 
-btn.innerHTML="🐱 เจ้าของแมว"
+      document
+      .getElementById("ownerPanel")
+      .classList.remove("hidden");
 
-document
-.getElementById("ownerPanel")
-.classList.remove("hidden")
+      btn.innerHTML="🐱 เจ้าของแมว";
 
-}else{
+   }else{
 
-alert("ไม่มีสิทธิ์")
+      alert("คุณไม่มีสิทธิ์");
 
-firebase.auth().signOut()
+      firebase.auth().signOut();
 
-}
+   }
 
-}else{
+ }else{
 
-btn.innerHTML="🔐 Owner Login"
+    document
+    .getElementById("ownerPanel")
+    .classList.add("hidden");
 
-}
+    btn.innerHTML="🔐 Owner Login";
 
-})
+ }
+
+});
 
 async function loginWithGoogle(){
 
-const provider=
-new firebase.auth.GoogleAuthProvider()
+ const provider=
+ new firebase.auth.GoogleAuthProvider();
 
-await firebase.auth()
-.signInWithRedirect(provider)
+ try{
 
-}
+   await firebase.auth()
+   .signInWithRedirect(provider);
 
-async function updateFinance(){
+ }catch(error){
 
-const donation=
-Number(
-document
-.getElementById("donationInput")
-.value
-)
+   console.log(error);
 
-const expense=
-Number(
-document
-.getElementById("expenseInput")
-.value
-)
-
-const detail=
-document
-.getElementById("expenseDetail")
-.value
-
-await db
-.collection("site")
-.doc("finance")
-.set({
-
-donation,
-expense,
-detail
-
-})
-
-loadFinance()
-
-alert("บันทึกสำเร็จ")
+ }
 
 }
 
-async function loadFinance(){
+function updateFinance(){
 
-const doc=
-await db
-.collection("site")
-.doc("finance")
-.get()
+ const donation=
+ Number(
+ document.getElementById(
+ "donationInput"
+ ).value
+ );
 
-if(!doc.exists)return
+ const expense=
+ Number(
+ document.getElementById(
+ "expenseInput"
+ ).value
+ );
 
-const data=doc.data()
+ const detail=
+ document.getElementById(
+ "expenseDetail"
+ ).value;
 
-document
-.getElementById("totalDonation")
-.innerHTML=
+ const balance=
+ donation-expense;
 
-data.donation
-.toLocaleString()
-+" บาท"
+ document
+ .getElementById(
+ "totalDonation"
+ )
+ .innerHTML=
+ donation.toLocaleString()
+ +" บาท";
 
-document
-.getElementById("totalExpense")
-.innerHTML=
+ document
+ .getElementById(
+ "totalExpense"
+ )
+ .innerHTML=
+ expense.toLocaleString()
+ +" บาท";
 
-data.expense
-.toLocaleString()
-+" บาท"
+ document
+ .getElementById(
+ "balanceAmount"
+ )
+ .innerHTML=
+ balance.toLocaleString()
+ +" บาท";
 
-document
-.getElementById("balanceAmount")
-.innerHTML=
+ document
+ .getElementById(
+ "expenseList"
+ )
+ .innerText=
+ detail;
 
-(
-data.donation-
-data.expense
-)
-.toLocaleString()
-+" บาท"
-
-document
-.getElementById("expenseList")
-.innerText=
-data.detail
-
-}
-
-async function saveCatUpdate(){
-
-const file=
-document
-.getElementById("catImage")
-.files[0]
-
-let url=""
-
-if(file){
-
-const ref=
-storage
-.ref()
-.child(
-"cats/"+Date.now()
-)
-
-await ref.put(file)
-
-url=
-await ref.getDownloadURL()
-
-}
-
-await db
-.collection("catUpdates")
-.add({
-
-date:
-document
-.getElementById("updateDate")
-.value,
-
-detail:
-document
-.getElementById("catUpdate")
-.value,
-
-image:url,
-
-createdAt:
-Date.now()
-
-})
-
-loadCats()
-
-alert("เพิ่มสำเร็จ")
-
-}
-
-async function loadCats(){
-
-const box=
-document
-.getElementById("catHistory")
-
-box.innerHTML=""
-
-const snap=
-await db
-.collection("catUpdates")
-.orderBy(
-"createdAt",
-"desc"
-)
-.get()
-
-snap.forEach(doc=>{
-
-const d=doc.data()
-
-box.innerHTML+=`
-
-<div
-class="
-bg-orange-50
-rounded-2xl
-p-5">
-
-<div
-class="
-text-orange-500
-font-bold">
-
-${d.date}
-
-</div>
-
-${
-d.image?
-
-`<img
-src="${d.image}"
-class="
-mt-3
-rounded-xl
-w-full">`
-
-:""
-
-}
-
-<div
-class="
-mt-3
-text-lg">
-
-${d.detail}
-
-</div>
-
-</div>
-
-`
-
-})
+ alert("บันทึกสำเร็จ");
 
 }
 
 function toggleDonation(){
 
-donationOpen=
-!donationOpen
+ donationOpen=!donationOpen;
 
-document
-.getElementById(
-"donationSection"
-)
-.style.display=
+ const status=
+ document.getElementById(
+ "statusBox"
+ );
 
-donationOpen
-?"block":"none"
+ const donate=
+ document.getElementById(
+ "donationSection"
+ );
 
-document
-.getElementById(
-"slipSection"
-)
-.style.display=
+ const slip=
+ document.getElementById(
+ "slipSection"
+ );
 
-donationOpen
-?"block":"none"
+ const btn=
+ document.getElementById(
+ "toggleBtn"
+ );
 
-document
-.getElementById(
-"statusBox"
-)
-.innerHTML=
+ if(donationOpen){
 
-donationOpen
+   status.innerHTML=
+   "💖 เปิดรับบริจาคอยู่";
 
-?"💖 เปิดรับบริจาคอยู่"
+   status.className=
+   "mt-8 inline-flex items-center gap-3 bg-green-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
 
-:"🙏 ปิดรับบริจาคชั่วคราว"
+   donate.style.display=
+   "block";
+
+   slip.style.display=
+   "block";
+
+   btn.innerHTML=
+   "🔴 ปิดรับบริจาคชั่วคราว";
+
+ }else{
+
+   status.innerHTML=
+   "🙏 ปิดรับบริจาคชั่วคราว";
+
+   status.className=
+   "mt-8 inline-flex items-center gap-3 bg-gray-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
+
+   donate.style.display=
+   "none";
+
+   slip.style.display=
+   "none";
+
+   btn.innerHTML=
+   "🟢 เปิดรับบริจาคอีกครั้ง";
+
+ }
 
 }
-
-loadFinance()
-loadCats()
 
 </script>
 
