@@ -219,7 +219,7 @@ const ADMIN_PASS = "12345";
 
 let isOwnerLoggedIn = false;
 let donationOpen = true;
-let currentConditionsArray = []; // เก็บสำเนาข้อมูลอาร์เรย์ปัจจุบันเพื่อใช้จัดการการลบ
+let currentConditionsArray = []; 
 
 liveDataRef.onSnapshot((doc) => {
   if (doc.exists) {
@@ -242,15 +242,13 @@ liveDataRef.onSnapshot((doc) => {
   }
 });
 
-// ฟังก์ชันสร้างหน้าต่าง Timeline อาการรายวัน (เพิ่มปุ่มลบให้กับผู้ดูแล 🛠️)
 function renderTimeline(conditionsArray) {
   const container = document.getElementById("timelineContainer");
-  if (conditionsArray.length === 0) {
+  if (!conditionsArray || conditionsArray.length === 0) {
     container.innerHTML = `<p class="text-gray-400 text-center py-4">ยังไม่มีข้อมูลการอัปเดตอาการ</p>`;
     return;
   }
 
-  // สร้างระบบอินเด็กซ์อ้างอิงตำแหน่งจริงของข้อมูลต้นฉบับก่อนทำการรีเวิร์สย้อนกลับ
   const logsWithIndex = conditionsArray.map((log, index) => ({ ...log, originalIndex: index }));
   const sortedLogs = logsWithIndex.reverse();
   
@@ -258,6 +256,7 @@ function renderTimeline(conditionsArray) {
   sortedLogs.forEach((log) => {
     let imagesHtml = "";
     
+    // รองรับการอ่านรูปที่แปลงเป็นก้อนสตริงต่อกันยาว ๆ (แก้บั๊กของ Firebase)
     if (log.imagesJoined && typeof log.imagesJoined === 'string') {
       const imgList = log.imagesJoined.split("||");
       imagesHtml = `<div class="grid grid-cols-2 gap-2 mt-2">`;
@@ -272,7 +271,9 @@ function renderTimeline(conditionsArray) {
         }
       });
       imagesHtml += `</div>`;
-    } else if (log.image) {
+    } 
+    // รองรับโครงสร้างรูปภาพรูปเดี่ยวแบบเดิม
+    else if (log.image) {
       imagesHtml = `
         <div class="overflow-hidden rounded-xl border border-orange-200 bg-white mt-2">
           <a href="${log.image}" target="_blank">
@@ -281,7 +282,6 @@ function renderTimeline(conditionsArray) {
         </div>`;
     }
 
-    // เจนเนอเรตปุ่มลบ (ลบส่วนนี้) ในหน้าอินเทอร์เฟซ โดยควบคุมสถานะการมองเห็นตามสิทธิ์ล็อกอินหลังบ้าน
     const deleteBtnHtml = isOwnerLoggedIn 
       ? `<button onclick="deleteConditionLog(${log.originalIndex})" class="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-full transition">❌ ลบส่วนนี้</button>` 
       : "";
@@ -300,22 +300,21 @@ function renderTimeline(conditionsArray) {
   container.innerHTML = html;
 }
 
-// ฟังก์ชันสั่งลบบันทึกอาการรายวันตัวที่ต้องการ 🗑️
+// 🗑️ ฟังก์ชันลบรายการ (แก้ไขให้ใช้วิธีบันทึกข้อมูลทับลงไปเพื่อความปลอดภัย)
 async function deleteConditionLog(targetIndex) {
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
   
   if (confirm("⚠️ คุณแน่ใจใช่ไหมว่าต้องการลบบันทึกอาการของวันนี้ทิ้งอย่างถาวร?")) {
     try {
-      // คัดลอกอาร์เรย์หลักมาตัดสมาชิกตำแหน่งที่ต้องการลบออก 1 ตัว
       let updatedArray = [...currentConditionsArray];
       updatedArray.splice(targetIndex, 1);
 
-      // อัปเดตโครงสร้างข้อมูลใหม่ทับไปยัง Firebase เพื่อผลลัพธ์แบบเรียลไทม์
+      // เขียนโครงสร้างอาร์เรย์ใหม่ทับตัวเก่าเพื่อแก้ปัญหา Property Invalid 
       await liveDataRef.update({
         conditions: updatedArray
       });
 
-      alert("ลบข้อมูลบันทึกอาการวันดังกล่าวเรียบร้อยแล้วครับ! 🗑️");
+      alert("ลบข้อมูลบันทึกอาการเรียบร้อยแล้วครับ!");
     } catch (error) {
       alert("ไม่สามารถลบข้อมูลได้เนื่องจาก: " + error.message);
     }
@@ -328,7 +327,7 @@ function handleAdminAuth() {
     document.getElementById("ownerPanel").classList.add("hidden");
     document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
     document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
-    renderTimeline(currentConditionsArray); // สั่งรันรีเรนเดอร์เพื่อซ่อนปุ่มลบออก
+    renderTimeline(currentConditionsArray);
     alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
   } else {
     const userInput = prompt("👤 กรุณากรอก 'ชื่อผู้ใช้' (Username) :");
@@ -342,7 +341,7 @@ function handleAdminAuth() {
       document.getElementById("ownerPanel").classList.remove("hidden");
       document.getElementById("loginBtn").innerHTML = "🚪 Logout (ผู้ดูแล)";
       document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
-      renderTimeline(currentConditionsArray); // สั่งรันรีเรนเดอร์เพื่อโชว์ปุ่มลบขึ้นมา
+      renderTimeline(currentConditionsArray);
       alert("🔓 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณผู้ดูแลระบบครับ");
     } else {
       alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง! ปฏิเสธการเข้าถึง");
@@ -359,6 +358,7 @@ function convertFileToBase64(file) {
   });
 }
 
+// 💾 ฟังก์ชันบันทึกอาการ (แก้ไขไม่ใช้ arrayUnion ป้องกันปัญหาโครงสร้างพังชนกันในอาร์เรย์ 🪄)
 async function addNewConditionLog() {
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
   
@@ -383,7 +383,7 @@ async function addNewConditionLog() {
         const base64Str = await convertFileToBase64(filesInput.files[i]);
         base64List.push(base64Str);
       }
-      imagesJoinedString = base64List.join("||");
+      imagesJoinedString = base64List.join("||"); // มัดรวมรูปภาพเป็น String เส้นเดียวกั้นด้วยเครื่องหมายพิเศษ เพื่อข้ามกฎ Firebase
     } catch (e) {
       alert("เกิดข้อผิดพลาดในการประมวลผลไฟล์ภาพของคุณ");
       return;
@@ -397,8 +397,12 @@ async function addNewConditionLog() {
   };
 
   try {
+    // ดึงก้อนข้อมูลเก่าลงมา แล้วผลักชุดข้อมูลใหม่เข้าอาร์เรย์ แล้วทำการสั่งเซฟอัปเดตทับลงไปตรง ๆ 
+    let updatedArray = [...currentConditionsArray];
+    updatedArray.push(newLog);
+
     await liveDataRef.update({
-      conditions: firebase.firestore.FieldValue.arrayUnion(newLog)
+      conditions: updatedArray
     });
     
     document.getElementById("newLogDate").value = "";
