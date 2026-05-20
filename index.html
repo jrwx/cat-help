@@ -611,29 +611,85 @@ async function loginWithGoogle(){
 
 async function updateFinance(){
 
- const donation=
- Number(donationInput.value);
+const donation=
+Number(
+donationInput.value
+);
 
- const expense=
- Number(expenseInput.value);
+const expense=
+Number(
+expenseInput.value
+);
 
- const detail=
- expenseDetail.value;
+const detail=
+expenseDetail.value;
 
- await db
- .collection("site")
- .doc("finance")
- .set({
+const date=
+expenseDate.value;
 
- donation,
- expense,
- detail
+document
+.getElementById(
+"totalDonation"
+)
+.innerHTML=
+donation.toLocaleString()
++" บาท";
 
- });
+document
+.getElementById(
+"totalExpense"
+)
+.innerHTML=
+expense.toLocaleString()
++" บาท";
 
- loadData();
+document
+.getElementById(
+"balanceAmount"
+)
+.innerHTML=
+(donation-expense)
+.toLocaleString()
++" บาท";
 
- alert("บันทึกแล้ว");
+const box=
+document
+.getElementById(
+"expenseList"
+);
+
+box.innerHTML=`
+
+<div
+class="bg-orange-50 rounded-2xl p-5">
+
+<div
+class="text-orange-500 font-semibold">
+
+${date}
+
+</div>
+
+<div class="mt-3">
+
+${detail.replace(/\n/g,"<br>")}
+
+</div>
+
+</div>
+
+`;
+
+window.scrollTo({
+
+top:0,
+behavior:"smooth"
+
+});
+
+alert(
+"อัปเดตสำเร็จ"
+);
 
 }
 
@@ -779,7 +835,49 @@ ${d.text}
 
 loadData();
 loadDaily();
+const db=firebase.firestore();
 
+async function loadFinance(){
+
+const doc=
+await db
+.collection("site")
+.doc("finance")
+.get();
+
+if(!doc.exists)return;
+
+const data=doc.data();
+
+document
+.getElementById("totalDonation")
+.innerHTML=
+(data.donation||0)
+.toLocaleString()+" บาท";
+
+document
+.getElementById("totalExpense")
+.innerHTML=
+(data.expense||0)
+.toLocaleString()+" บาท";
+
+document
+.getElementById("balanceAmount")
+.innerHTML=
+(
+(data.donation||0)
+-
+(data.expense||0)
+).toLocaleString()+" บาท";
+
+document
+.getElementById("expenseList")
+.innerText=
+data.detail||"";
+
+}
+
+loadFinance();
 </script>
 
 </body>
