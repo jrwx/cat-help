@@ -160,7 +160,7 @@
 
 <section id="donationSection" class="max-w-6xl mx-auto px-5 py-10">
   <div class="grid md:grid-cols-2 gap-8 items-start">
-    <div class="bg-white rounded-3xl shadow-xl overflow-hidden md:sticky md:top-24">
+    <div id="qrBox" class="bg-white rounded-3xl shadow-xl overflow-hidden md:sticky md:top-24">
       <div class="bg-orange-500 text-white p-6">
         <h2 class="text-3xl font-bold">💳 บริจาคช่วยน้อง</h2>
       </div>
@@ -236,7 +236,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const liveDataRef = db.collection("cat_status").doc("live_data");
 const slipsCollectionRef = db.collection("slips");
-const logsCollectionRef = db.collection("daily_logs"); // คอลเลกชันใหม่เพื่อแก้บั๊กเรื่องอาร์เรย์พังอย่างถาวร
+const logsCollectionRef = db.collection("daily_logs");
 
 let isOwnerLoggedIn = false;
 let donationOpen = true;
@@ -270,7 +270,7 @@ liveDataRef.onSnapshot((doc) => {
   }
 });
 
-// 2. ดึงข้อมูลบันทึกอาการวันต่อวันจากคอลเลกชันใหม่แบบ Realtime (เรียงวันที่ล่าสุดขึ้นก่อน)
+// 2. ดึงข้อมูลบันทึกอาการวันต่อวัน
 logsCollectionRef.orderBy("logTimestamp", "desc").onSnapshot((snapshot) => {
   renderTimelineFromSnapshot(snapshot);
 });
@@ -311,6 +311,8 @@ slipsCollectionRef.orderBy("timestamp", "desc").onSnapshot((snapshot) => {
 
 function renderTimelineFromSnapshot(snapshot) {
   const container = document.getElementById("timelineContainer");
+  if (!container) return; // ป้องกันกรณีหาอิลิเมนต์ไม่เจอ
+  
   if (snapshot.empty) {
     container.innerHTML = `<p class="text-gray-400 text-center py-4">ยังไม่มีข้อมูลการอัปเดตอาการ</p>`;
     return;
@@ -356,7 +358,44 @@ function renderTimelineFromSnapshot(snapshot) {
   container.innerHTML = html;
 }
 
-// ➕ ฟังก์ชันเพิ่มบันทึกอาการประจำวัน (อัปเกรดเป็นเซฟแยกชิ้นลงคอลเลกชัน บั๊กหายแน่นอน 100%)
+const ADMIN_USER = "แมวน้อย";
+const ADMIN_PASS = "12345";
+
+function handleAdminAuth() {
+  if (isOwnerLoggedIn) {
+    isOwnerLoggedIn = false;
+    document.getElementById("ownerPanel").classList.add("hidden");
+    document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
+    document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
+    
+    // สั่งรีเฟรชไทม์ไลน์เพื่อซ่อนปุ่มลบออกสำหรับคนทั่วไป
+    logsCollectionRef.orderBy("logTimestamp", "desc").get().then((snapshot) => {
+      renderTimelineFromSnapshot(snapshot);
+    });
+    alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
+  } else {
+    const userInput = prompt("👤 กรุณากรอก 'ชื่อผู้ใช้' (Username) :");
+    if (userInput === null) return; 
+    const passInput = prompt("🔑 กรุณากรอก 'รหัสผ่าน' (Password) :");
+    if (passInput === null) return; 
+
+    if (userInput === ADMIN_USER && passInput === ADMIN_PASS) {
+      isOwnerLoggedIn = true;
+      document.getElementById("ownerPanel").classList.remove("hidden");
+      document.getElementById("loginBtn").innerHTML = "🚪 Logout (ผู้ดูแล)";
+      document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
+      
+      // สั่งรีเฟรชไทม์ไลน์เพื่อให้ปุ่มกากบาทสีแดงโผล่ขึ้นมาทันทีหลังล็อกอิน
+      logsCollectionRef.orderBy("logTimestamp", "desc").get().then((snapshot) => {
+        renderTimelineFromSnapshot(snapshot);
+      });
+      alert("🔓 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณผู้ดูแลระบบครับ");
+    } else {
+      alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง! ปฏิเสธการเข้าถึง");
+    }
+  }
+}
+
 async function addNewConditionLog() {
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
   
@@ -395,18 +434,16 @@ async function addNewConditionLog() {
   }
 
   try {
-    // เซฟแยกเป็นเอกสารแผ่นใหม่เข้าไปในคอลเลกชัน daily_logs ทันที
     await logsCollectionRef.add({
       date: formattedThaiDate,
       imagesJoined: imagesJoinedString !== "" ? imagesJoinedString : null,
       content: contentVal,
-      logTimestamp: dateObj.getTime() // ใช้ตั้งค่าเวลาสำหรับเรียงลำดับจากปฏิทิน
+      logTimestamp: dateObj.getTime()
     });
     
     document.getElementById("newLogDate").value = "";
     document.getElementById("newLogImagesInput").value = "";
     document.getElementById("newLogContent").value = "";
-    
     alert("เพิ่มข้อมูลอาการประจำวันลงไทม์ไลน์เรียบร้อยแล้ว! 🎉");
   } catch (error) {
     alert("ไม่สามารถเพิ่มข้อมูลอาการได้เนื่องจาก: " + error.message);
@@ -416,7 +453,6 @@ async function addNewConditionLog() {
   }
 }
 
-// ❌ ฟังก์ชันลบบันทึกอาการ (ปรับปรุงให้สั่งลบเอกสารตาม ID ในคอลเลกชันย่อย)
 async function deleteConditionLog(logId) {
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
   if (confirm("⚠️ คุณแน่ใจใช่ไหมว่าต้องการลบบันทึกอาการของวันนี้ทิ้งอย่างถาวร?")) {
@@ -429,7 +465,6 @@ async function deleteConditionLog(logId) {
   }
 }
 
-// 📤 ฟังก์ชันฝั่งคนบริจาค: ส่งรูปภาพสลิป
 async function submitDonationSlip() {
   const fileInput = document.getElementById("slipFileInput");
   const msgInput = document.getElementById("slipMessageInput");
@@ -445,7 +480,6 @@ async function submitDonationSlip() {
 
   try {
     const base64Image = await convertFileToBase64(fileInput.files[0]);
-    
     await slipsCollectionRef.add({
       image: base64Image,
       message: msgInput.value.trim(),
@@ -463,7 +497,6 @@ async function submitDonationSlip() {
   }
 }
 
-// 🗑️ ฟังก์ชันลบคิวสลิปออกจากระบบหลังบ้าน
 async function deleteSlip(docId) {
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
   if (confirm("คุณตรวจสอบยอดเงินและต้องการลบสลิปนี้ออกจากคิวใช่ไหม?")) {
@@ -472,31 +505,6 @@ async function deleteSlip(docId) {
       alert("ลบรายการสลิปเรียบร้อยแล้วครับ");
     } catch (error) {
       alert("ไม่สามารถลบสลิปได้: " + error.message);
-    }
-  }
-}
-
-function handleAdminAuth() {
-  if (isOwnerLoggedIn) {
-    isOwnerLoggedIn = false;
-    document.getElementById("ownerPanel").classList.add("hidden");
-    document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
-    document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
-    alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
-  } else {
-    const userInput = prompt("👤 กรุณากรอก 'ชื่อผู้ใช้' (Username) :");
-    if (userInput === null) return; 
-    const passInput = prompt("🔑 กรุณากรอก 'รหัสผ่าน' (Password) :");
-    if (passInput === null) return; 
-
-    if (userInput === ADMIN_USER && passInput === ADMIN_PASS) {
-      isOwnerLoggedIn = true;
-      document.getElementById("ownerPanel").classList.remove("hidden");
-      document.getElementById("loginBtn").innerHTML = "🚪 Logout (ผู้ดูแล)";
-      document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
-      alert("🔓 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณผู้ดูแลระบบครับ");
-    } else {
-      alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง! ปฏิเสธการเข้าถึง");
     }
   }
 }
@@ -540,21 +548,21 @@ async function toggleDonation(){
 
 function updateDonationUI(isOpen) {
   const statusBox = document.getElementById("statusBox");
-  const donationSection = document.getElementById("donationSection");
+  const qrBox = document.getElementById("qrBox");
   const slipSection = document.getElementById("slipSection");
   const toggleBtn = document.getElementById("toggleBtn");
 
   if(isOpen){
     statusBox.innerHTML = "💖 เปิดรับบริจาคอยู่";
     statusBox.className = "mt-8 inline-flex items-center gap-3 bg-green-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
-    donationSection.style.display = "block";
-    slipSection.style.display = "block";
+    if(qrBox) qrBox.style.display = "block";
+    if(slipSection) slipSection.style.display = "block";
     toggleBtn.innerHTML = "🔴 ปิดรับบริจาคชั่วคราว";
   }else{
     statusBox.innerHTML = "🙏 ปิดรับบริจาคชั่วคราว";
     statusBox.className = "mt-8 inline-flex items-center gap-3 bg-gray-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
-    donationSection.style.display = "none";
-    slipSection.style.display = "none";
+    if(qrBox) qrBox.style.display = "none";
+    if(slipSection) slipSection.style.display = "none";
     toggleBtn.innerHTML = "🟢 เปิดรับบริจาคอีกครั้ง";
   }
 }
