@@ -13,10 +13,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
   <style>
 
@@ -258,115 +256,17 @@
 - ค่ายาฆ่าเชื้อ 1,200 บาท
 - ค่าล้างตา 800 บาท"
           class="w-full p-4 rounded-2xl border border-orange-200"></textarea>
-          
-          <div>
-            <input
-id="expenseDate"
-type="date"
-class="w-full p-4 rounded-2xl border border-orange-200"
-/>
-
-<label class="font-semibold block mb-2">
-อาการล่าสุด
-</label>
-
-<textarea
-id="catUpdate"
-rows="4"
-class="w-full p-4 rounded-2xl border border-orange-200"
-placeholder="วันนี้น้องเป็นยังไง">
-</textarea>
-
-</div>
-
-<div>
-
-<label class="font-semibold block mb-2">
-วันที่อัปเดต
-</label>
-
-<input
-id="updateDate"
-type="date"
-class="w-full p-4 rounded-2xl border border-orange-200"
-/>
-
-</div>
-
-<div>
-
-<label class="font-semibold block mb-2">
-รูปน้องแมว
-</label>
-
-<input
-id="catImage"
-type="file"
-accept="image/*"
-class="w-full p-4 rounded-2xl border border-orange-200"
-/>
-
-</div>
-
-<button
-onclick="saveCatUpdate()"
-class="w-full bg-green-500 text-white py-4 rounded-2xl">
-
-📸 เพิ่มอัปเดตน้องแมว
-
-</button>
 
       </div>
 
       <!-- UPDATE -->
-<textarea
-id="expenseDetail"
-rows="6"
-class="w-full p-4 rounded-2xl border border-orange-200">
-</textarea>
+      <button
+        onclick="updateFinance()"
+        class="w-full bg-orange-500 hover:bg-orange-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
 
-<div>
+        💾 บันทึกข้อมูล
 
-<label class="font-semibold block mb-2">
-อาการน้องวันนี้
-</label>
-
-<input
-id="catDate"
-type="date"
-class="w-full p-4 rounded-2xl border border-orange-200"
-/>
-
-<textarea
-id="catText"
-rows="4"
-placeholder="วันนี้น้องเป็นยังไง"
-class="w-full p-4 rounded-2xl border border-orange-200 mt-3">
-</textarea>
-
-<input
-id="catImage"
-type="file"
-accept="image/*"
-class="mt-3"
-/>
-
-<button
-onclick="saveCatUpdate()"
-class="w-full bg-orange-500 text-white py-4 rounded-2xl mt-3">
-
-📸 บันทึกอาการรายวัน
-
-</button>
-
-</div>
-
-<button
-onclick="updateFinance()">
-
-💾 บันทึกข้อมูล
-
-</button>
+      </button>
 
       <!-- TOGGLE -->
       <button
@@ -416,11 +316,11 @@ onclick="updateFinance()">
           </div>
 
           <div class="text-3xl font-bold mt-2">
-            08
+            081-234-5678
           </div>
 
           <div class="mt-3 text-gray-600">
-            ชื่อบัญชี: กุลปริยา ฐานบำรุงรักษ์
+            ชื่อบัญชี: YOUR NAME
           </div>
 
         </div>
@@ -472,16 +372,17 @@ onclick="updateFinance()">
 
     <div class="bg-orange-50 p-6">
 
-<h2 class="text-3xl font-bold">
-📋 รายละเอียดค่าใช้จ่าย
-</h2>
+      <h2 class="text-3xl font-bold">
+        📋 รายการค่ารักษา
+      </h2>
 
     </div>
 
-<div
-id="catHistory"
-class="p-8 space-y-4">
-<div id="expenseList"></div>
+    <div class="p-8">
+
+      <div
+        id="expenseList"
+        class="whitespace-pre-line text-lg leading-relaxed text-gray-700">
 
 - ค่ายาฆ่าเชื้อ 1,200 บาท
 - ค่าล้างตา 800 บาท
@@ -560,324 +461,175 @@ class="p-8 space-y-4">
 
 </footer>
 
+<!-- SCRIPT -->
 <script>
 
-const firebaseConfig={
- apiKey:"AIzaSyDLL5PYwQ3aHxeA-PszAh2x3mJxTUDXdpY",
- authDomain:"cat-help-18ffb.firebaseapp.com",
- projectId:"cat-help-18ffb",
- storageBucket:"cat-help-18ffb.firebasestorage.app",
- messagingSenderId:"545008804888",
- appId:"1:545008804888:web:97d6c2c6dd228db8138f6d"
+  // FIREBASE CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyDLL5PYwQ3aHxeA-PszAh2x3mJxTUDXdpY",
+  authDomain: "cat-help-18ffb.firebaseapp.com",
+  projectId: "cat-help-18ffb",
+  storageBucket: "cat-help-18ffb.firebasestorage.app",
+  messagingSenderId: "545008804888",
+  appId: "1:545008804888:web:97d6c2c6dd228db8138f6d",
+  measurementId: "G-LEB15WNE0X"
 };
 
 firebase.initializeApp(firebaseConfig);
 
-const db=firebase.firestore();
-const storage=firebase.storage();
+firebase.auth().getRedirectResult()
+.then((result)=>{
 
-const allowedOwners=[
-"j45phuarram@gmail.com",
-"mhiwpharr@hotmail.com"
-];
+  const user = result.user;
 
-firebase.auth().onAuthStateChanged(user=>{
+  if(user){
 
- const btn=document.getElementById("loginBtn");
+    if(
+      allowedOwners.includes(user.email)
+    ){
 
- if(user&&allowedOwners.includes(user.email)){
+      document
+      .getElementById("ownerPanel")
+      .classList.remove("hidden");
 
-   ownerPanel.classList.remove("hidden");
-   btn.innerHTML="🐱 เจ้าของแมว";
+      alert("เข้าสู่ระบบสำเร็จ");
 
- }else{
+    }else{
 
-   ownerPanel.classList.add("hidden");
-   btn.innerHTML="🔐 Owner Login";
+      alert("คุณไม่มีสิทธิ์");
 
- }
+      firebase.auth().signOut();
+
+    }
+
+  }
+
+})
+.catch((error)=>{
+
+  console.log(error);
 
 });
 
+  // OWNER EMAIL
+  const allowedOwners = [
+
+    "j45phuarram@gmail.com",
+    "mhiwpharr@hotmail.com"
+
+  ];
+
+  // DONATION STATUS
+  let donationOpen = true;
+
+  // LOGIN
 async function loginWithGoogle(){
 
- const provider=
- new firebase.auth.GoogleAuthProvider();
+  const provider =
+    new firebase.auth.GoogleAuthProvider();
 
- await firebase.auth()
- .signInWithRedirect(provider);
+  try{
 
-}
+    await firebase
+      .auth()
+      .signInWithRedirect(provider);
 
-async function updateFinance(){
+  }catch(error){
 
-const donation=
-Number(
-donationInput.value
-);
+    console.log(error);
 
-const expense=
-Number(
-expenseInput.value
-);
+    alert(error.message);
 
-const detail=
-expenseDetail.value;
-
-const date=
-expenseDate.value;
-
-document
-.getElementById(
-"totalDonation"
-)
-.innerHTML=
-donation.toLocaleString()
-+" บาท";
-
-document
-.getElementById(
-"totalExpense"
-)
-.innerHTML=
-expense.toLocaleString()
-+" บาท";
-
-document
-.getElementById(
-"balanceAmount"
-)
-.innerHTML=
-(donation-expense)
-.toLocaleString()
-+" บาท";
-
-const box=
-document
-.getElementById(
-"expenseList"
-);
-
-box.innerHTML=`
-
-<div
-class="bg-orange-50 rounded-2xl p-5">
-
-<div
-class="text-orange-500 font-semibold">
-
-${date}
-
-</div>
-
-<div class="mt-3">
-
-${detail.replace(/\n/g,"<br>")}
-
-</div>
-
-</div>
-
-`;
-
-window.scrollTo({
-
-top:0,
-behavior:"smooth"
-
-});
-
-alert(
-"อัปเดตสำเร็จ"
-);
+  }
 
 }
 
-async function loadData(){
 
- const doc=
- await db
- .collection("site")
- .doc("finance")
- .get();
+  // UPDATE FINANCE
+  function updateFinance(){
 
- if(doc.exists){
+    const donation =
+      Number(document.getElementById("donationInput").value);
 
- const data=doc.data();
+    const expense =
+      Number(document.getElementById("expenseInput").value);
 
- totalDonation.innerHTML=
- data.donation.toLocaleString()
- +" บาท";
+    const detail =
+      document.getElementById("expenseDetail").value;
 
- totalExpense.innerHTML=
- data.expense.toLocaleString()
- +" บาท";
+    const balance =
+      donation - expense;
 
- balanceAmount.innerHTML=
- (data.donation-data.expense)
- .toLocaleString()
- +" บาท";
+    // UPDATE UI
+    document.getElementById("totalDonation")
+      .innerHTML =
+      donation.toLocaleString() + " บาท";
 
- expenseList.innerText=
- data.detail||"";
+    document.getElementById("totalExpense")
+      .innerHTML =
+      expense.toLocaleString() + " บาท";
 
- }
+    document.getElementById("balanceAmount")
+      .innerHTML =
+      balance.toLocaleString() + " บาท";
 
-}
+    document.getElementById("expenseList")
+      .innerText =
+      detail;
 
-async function saveDailyUpdate(){
+    alert("อัปเดตข้อมูลสำเร็จ");
 
- const text=
- document
- .getElementById(
- "dailyText"
- ).value;
+  }
 
- const date=
- document
- .getElementById(
- "dailyDate"
- ).value;
+  // TOGGLE DONATION
+  function toggleDonation(){
 
- const file=
- document
- .getElementById(
- "dailyImage"
- )
- .files[0];
+    donationOpen = !donationOpen;
 
- let image="";
+    const statusBox =
+      document.getElementById("statusBox");
 
- if(file){
+    const donationSection =
+      document.getElementById("donationSection");
 
- const ref=
- storage
- .ref(
- "cats/"+Date.now()
- );
+    const slipSection =
+      document.getElementById("slipSection");
 
- await ref.put(file);
+    const toggleBtn =
+      document.getElementById("toggleBtn");
 
- image=
- await ref
- .getDownloadURL();
+    if(donationOpen){
 
- }
+      statusBox.innerHTML =
+        "💖 เปิดรับบริจาคอยู่";
 
- await db
- .collection(
- "daily"
- )
- .add({
+      statusBox.className =
+        "mt-8 inline-flex items-center gap-3 bg-green-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
 
- text,
- date,
- image,
- createdAt:
- firebase.firestore
- .FieldValue
- .serverTimestamp()
+      donationSection.style.display = "block";
+      slipSection.style.display = "block";
 
- });
+      toggleBtn.innerHTML =
+        "🔴 ปิดรับบริจาคชั่วคราว";
 
- loadDaily();
+    }else{
 
-}
+      statusBox.innerHTML =
+        "🙏 ปิดรับบริจาคชั่วคราว";
 
-async function loadDaily(){
+      statusBox.className =
+        "mt-8 inline-flex items-center gap-3 bg-gray-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
 
- const box=
- document
- .getElementById(
- "dailyBox"
- );
+      donationSection.style.display = "none";
+      slipSection.style.display = "none";
 
- box.innerHTML="";
+      toggleBtn.innerHTML =
+        "🟢 เปิดรับบริจาคอีกครั้ง";
 
- const snap=
- await db
- .collection("daily")
- .orderBy(
- "createdAt",
- "desc"
- )
- .get();
+    }
 
- snap.forEach(doc=>{
+  }
 
- const d=
- doc.data();
-
- box.innerHTML+=`
-
-<div class="bg-orange-50 rounded-2xl p-5 mb-4">
-
-<div class="font-bold text-orange-500">
-${d.date}
-</div>
-
-<img
-src="${d.image}"
-class="rounded-xl mt-3 mb-3"
-/>
-
-<div>
-${d.text}
-</div>
-
-</div>
-
-`;
-
- });
-
-}
-
-loadData();
-loadDaily();
-const db=firebase.firestore();
-
-async function loadFinance(){
-
-const doc=
-await db
-.collection("site")
-.doc("finance")
-.get();
-
-if(!doc.exists)return;
-
-const data=doc.data();
-
-document
-.getElementById("totalDonation")
-.innerHTML=
-(data.donation||0)
-.toLocaleString()+" บาท";
-
-document
-.getElementById("totalExpense")
-.innerHTML=
-(data.expense||0)
-.toLocaleString()+" บาท";
-
-document
-.getElementById("balanceAmount")
-.innerHTML=
-(
-(data.donation||0)
--
-(data.expense||0)
-).toLocaleString()+" บาท";
-
-document
-.getElementById("expenseList")
-.innerText=
-data.detail||"";
-
-}
-
-loadFinance();
 </script>
 
 </body>
