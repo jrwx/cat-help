@@ -93,8 +93,8 @@
       
       <div class="p-4 bg-red-50 border border-red-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
         <div>
-          <h5 class="font-bold text-red-600">🧹 ปุ่มล้างระบบไทม์ไลน์ที่มีปัญหา</h5>
-          <p class="text-xs text-gray-500">กดปุ่มนี้เพื่อเคลียร์ข้อมูลเก่าที่ล็อกฟอร์แมตพังออกจากฐานข้อมูลคลาวด์ก่อนครับ</p>
+          <h5 class="font-bold text-red-600">🧹 ปุ่มล้างระบบไทม์ไลน์ที่พัง (เวอร์ชัน 2 รีเซ็ตคลีนชัวร์)</h5>
+          <p class="text-xs text-gray-500">กดปุ่มนี้เพื่อใช้คำสั่งล้างข้อมูลและฟอร์แมตเก่าที่ล็อกบั๊กคาไว้ในคลาวด์ทิ้งไปครับ</p>
         </div>
         <button onclick="clearAllConditionsData()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow">
           ล้างไทม์ไลน์เก่าทั้งหมด
@@ -232,20 +232,30 @@ let isOwnerLoggedIn = false;
 let donationOpen = true;
 let currentConditionsArray = []; 
 
+// ดึงค่าการเงินปัจจุบันมาเป็นตัวแปรสำรอง
+let currentDonationTotal = 0;
+let currentExpenseTotal = 0;
+let currentExpenseDetailStr = "";
+
 liveDataRef.onSnapshot((doc) => {
   if (doc.exists) {
     const data = doc.data();
     donationOpen = data.donationOpen;
-    const balance = data.totalDonation - data.totalExpense;
+    
+    currentDonationTotal = data.totalDonation || 0;
+    currentExpenseTotal = data.totalExpense || 0;
+    currentExpenseDetailStr = data.expenseDetail || "";
 
-    document.getElementById("totalDonation").innerHTML = data.totalDonation.toLocaleString() + " บาท";
-    document.getElementById("totalExpense").innerHTML = data.totalExpense.toLocaleString() + " บาท";
+    const balance = currentDonationTotal - currentExpenseTotal;
+
+    document.getElementById("totalDonation").innerHTML = currentDonationTotal.toLocaleString() + " บาท";
+    document.getElementById("totalExpense").innerHTML = currentExpenseTotal.toLocaleString() + " บาท";
     document.getElementById("balanceAmount").innerHTML = balance.toLocaleString() + " บาท";
-    document.getElementById("expenseList").innerText = data.expenseDetail;
+    document.getElementById("expenseList").innerText = currentExpenseDetailStr;
 
-    document.getElementById("donationInput").value = data.totalDonation;
-    document.getElementById("expenseInput").value = data.totalExpense;
-    document.getElementById("expenseDetail").value = data.expenseDetail;
+    document.getElementById("donationInput").value = currentDonationTotal;
+    document.getElementById("expenseInput").value = currentExpenseTotal;
+    document.getElementById("expenseDetail").value = currentExpenseDetailStr;
 
     currentConditionsArray = Array.isArray(data.conditions) ? data.conditions : [];
     renderTimeline(currentConditionsArray);
@@ -308,17 +318,22 @@ function renderTimeline(conditionsArray) {
   container.innerHTML = html;
 }
 
-// 🚨 ฟังก์ชันล้างข้อมูลพังใน Firebase (กดครั้งเดียวระบบจะโล่งเลย)
+// 🎯 ฟังก์ชันล้างข้อมูลพังเวอร์ชันสมบูรณ์ (ใช้คำสั่ง set แทนการ update เพื่อล้างพิมพ์เขียวเก่าทิ้ง)
 async function clearAllConditionsData() {
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
-  if (confirm("🚨 คำเตือน: คุณต้องการล้างข้อมูลไทม์ไลน์เก่าทั้งหมดเพื่อเคลียร์บั๊กใช่ไหม? (แนะนำให้ทำ 1 ครั้งเพื่อเซ็ตระบบใหม่)")) {
+  if (confirm("🚨 ยืนยันการล้างระบบ: ระบบจะทำการ Reset โครงสร้างข้อมูลไทม์ไลน์ใหม่ทั้งหมดเพื่อแก้ไขปัญหากล่องเออร์เรอร์ ยืนยันไหมครับ?")) {
     try {
-      await liveDataRef.update({
+      // ใช้คำสั่ง .set() เขียนข้อมูลลงไปใหม่ทั้งหมด โดยคงค่าการเงินเดิมไว้ แต่เคลียร์ conditions ให้สะอาดเอี่ยม
+      await liveDataRef.set({
+        donationOpen: donationOpen,
+        totalDonation: currentDonationTotal,
+        totalExpense: currentExpenseTotal,
+        expenseDetail: currentExpenseDetailStr,
         conditions: []
       });
-      alert("🧹 เคลียร์หน้าไทม์ไลน์เก่าเรียบร้อยแล้วครับ! ตอนนี้สามารถกดเพิ่มบันทึกอาการใหม่แบบหลายรูปได้เลย");
+      alert("🧹 ระบบทำการทำลายอาร์เรย์ตัวเก่าที่มีปัญหาเรียบร้อยแล้วครับ! ตอนนี้หน้าเว็บสะอาดพร้อมให้ใส่ข้อมูลใหม่แล้ว ลองบันทึกอาการดูได้เลยครับ");
     } catch (error) {
-      alert("เกิดข้อผิดพลาด: " + error.message);
+      alert("เกิดข้อผิดพลาดในการ Reset: " + error.message);
     }
   }
 }
