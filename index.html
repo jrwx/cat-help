@@ -271,22 +271,30 @@ liveDataRef.onSnapshot((doc) => {
 });
 
 // 2. ดึงข้อมูลบันทึกอาการวันต่อวัน
-logsCollectionRef.orderBy("logTimestamp", "desc").onSnapshot((snapshot) => {
-  renderTimelineFromSnapshot(snapshot);
+logsCollectionRef.onSnapshot((snapshot) => {
+  // ดึงข้อมูลมาเรียงลำดับฝั่งไคลเอนต์เพื่อเลี่ยงปัญหาเรื่อง Index ของ Firebase พัง
+  const docs = [];
+  snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+  docs.sort((a, b) => (b.logTimestamp || 0) - (a.logTimestamp || 0));
+  renderTimelineFromDocs(docs);
 });
 
-// 3. ดึงข้อมูลคิวสลิปบริจาคแบบ Realtime
-slipsCollectionRef.orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+// 3. ดึงข้อมูลคิวสลิปบริจาคแบบ Realtime (แก้ไขบั๊กตัวสั่ง orderBy ที่ทำให้ระบบแน่นิ่งออกแล้ว)
+slipsCollectionRef.onSnapshot((snapshot) => {
   const tableBody = document.getElementById("slipTableBody");
   if (snapshot.empty) {
     tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">ยังไม่มีข้อมูลสลิปบริจาคส่งเข้ามาในขณะนี้</td></tr>`;
     return;
   }
 
+  // ดึงข้อมูลและเรียงลำดับผ่าน JavaScript แทนการใช้คลาวด์สั่งเรียงเพื่อความปลอดภัย 100%
+  const slipDocs = [];
+  snapshot.forEach(doc => slipDocs.push({ id: doc.id, ...doc.data() }));
+  slipDocs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
   let html = "";
-  snapshot.forEach((doc) => {
-    const slipData = doc.data();
-    const docId = doc.id;
+  slipDocs.forEach((slipData) => {
+    const docId = slipData.id;
     const dateStr = slipData.timestamp ? new Date(slipData.timestamp).toLocaleString('th-TH') : "ไม่ระบุเวลา";
 
     html += `
@@ -309,19 +317,18 @@ slipsCollectionRef.orderBy("timestamp", "desc").onSnapshot((snapshot) => {
   tableBody.innerHTML = html;
 });
 
-function renderTimelineFromSnapshot(snapshot) {
+function renderTimelineFromDocs(docsArray) {
   const container = document.getElementById("timelineContainer");
-  if (!container) return; // ป้องกันกรณีหาอิลิเมนต์ไม่เจอ
+  if (!container) return;
   
-  if (snapshot.empty) {
+  if (docsArray.length === 0) {
     container.innerHTML = `<p class="text-gray-400 text-center py-4">ยังไม่มีข้อมูลการอัปเดตอาการ</p>`;
     return;
   }
 
   let html = "";
-  snapshot.forEach((doc) => {
-    const log = doc.data();
-    const logId = doc.id;
+  docsArray.forEach((log) => {
+    const logId = log.id;
     let imagesHtml = "";
     
     if (log.imagesJoined && typeof log.imagesJoined === 'string') {
@@ -368,9 +375,11 @@ function handleAdminAuth() {
     document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
     document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
     
-    // สั่งรีเฟรชไทม์ไลน์เพื่อซ่อนปุ่มลบออกสำหรับคนทั่วไป
-    logsCollectionRef.orderBy("logTimestamp", "desc").get().then((snapshot) => {
-      renderTimelineFromSnapshot(snapshot);
+    logsCollectionRef.get().then((snapshot) => {
+      const docs = [];
+      snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+      docs.sort((a, b) => (b.logTimestamp || 0) - (a.logTimestamp || 0));
+      renderTimelineFromDocs(docs);
     });
     alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
   } else {
@@ -385,14 +394,50 @@ function handleAdminAuth() {
       document.getElementById("loginBtn").innerHTML = "🚪 Logout (ผู้ดูแล)";
       document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
       
-      // สั่งรีเฟรชไทม์ไลน์เพื่อให้ปุ่มกากบาทสีแดงโผล่ขึ้นมาทันทีหลังล็อกอิน
-      logsCollectionRef.orderBy("logTimestamp", "desc").get().then((snapshot) => {
-        renderTimelineFromSnapshot(snapshot);
+      logsCollectionRef.get().then((snapshot) => {
+        const docs = [];
+        snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+        docs.sort((a, b) => (b.logTimestamp || 0) - (a.logTimestamp || 0));
+        renderTimelineFromDocs(docs);
       });
       alert("🔓 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณผู้ดูแลระบบครับ");
     } else {
       alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง! ปฏิเสธการเข้าถึง");
     }
+  }
+}
+
+// 📤 ฟังก์ชันส่งรูปภาพสลิปเข้าคอลเลกชันย่อย (ปรับปรุงตัวดักจับแก้แน่นิ่ง)
+async function submitDonationSlip() {
+  const fileInput = document.getElementById("slipFileInput");
+  const msgInput = document.getElementById("slipMessageInput");
+  const submitBtn = document.getElementById("submitSlipBtn");
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    alert("❌ กรุณาเลือกไฟล์รูปภาพสลิปธนาคารก่อนกดส่งนะครับ");
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = "⏳ กำลังส่งข้อมูลสลิป...";
+
+  try {
+    const base64Image = await convertFileToBase64(fileInput.files[0]);
+    
+    await slipsCollectionRef.add({
+      image: base64Image,
+      message: msgInput.value.trim(),
+      timestamp: Date.now()
+    });
+
+    fileInput.value = "";
+    msgInput.value = "";
+    alert("💖 ส่งสลิปบริจาคและข้อความเรียบร้อยแล้ว ขอบคุณแทนน้องแมวด้วยนะครับ!");
+  } catch (error) {
+    alert("เกิดข้อผิดพลาดในการส่งสลิป: " + error.message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = "ส่งสลิป 💖";
   }
 }
 
@@ -462,38 +507,6 @@ async function deleteConditionLog(logId) {
     } catch (error) {
       alert("ไม่สามารถลบข้อมูลได้เนื่องจาก: " + error.message);
     }
-  }
-}
-
-async function submitDonationSlip() {
-  const fileInput = document.getElementById("slipFileInput");
-  const msgInput = document.getElementById("slipMessageInput");
-  const submitBtn = document.getElementById("submitSlipBtn");
-
-  if (!fileInput.files || fileInput.files.length === 0) {
-    alert("❌ กรุณาเลือกไฟล์รูปภาพสลิปธนาคารก่อนกดส่งนะครับ");
-    return;
-  }
-
-  submitBtn.disabled = true;
-  submitBtn.innerHTML = "⏳ กำลังส่งข้อมูลสลิป...";
-
-  try {
-    const base64Image = await convertFileToBase64(fileInput.files[0]);
-    await slipsCollectionRef.add({
-      image: base64Image,
-      message: msgInput.value.trim(),
-      timestamp: Date.now()
-    });
-
-    fileInput.value = "";
-    msgInput.value = "";
-    alert("💖 ส่งสลิปบริจาคและข้อความเรียบร้อยแล้ว ขอบคุณแทนน้องแมวด้วยนะครับ!");
-  } catch (error) {
-    alert("เกิดข้อผิดพลาดในการส่งสลิป: " + error.message);
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = "ส่งสลิป 💖";
   }
 }
 
