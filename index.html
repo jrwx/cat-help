@@ -178,17 +178,33 @@
 
 <section id="donationSection" class="max-w-6xl mx-auto px-5 py-10">
   <div class="grid md:grid-cols-2 gap-8 items-start">
-    <div id="qrBox" class="bg-white rounded-3xl shadow-xl overflow-hidden md:sticky md:top-24">
+    <div id="qrBox" class="bg-white rounded-3xl shadow-xl overflow-hidden md:sticky md:top-24 border border-orange-100">
       <div class="bg-orange-500 text-white p-6">
-        <h2 class="text-3xl font-bold">💳 บริจาคช่วยน้อง</h2>
+        <h2 class="text-3xl font-bold">💳 ช่องทางการโอนบริจาค</h2>
       </div>
-      <div class="p-8 text-center">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=PromptPay" class="w-64 mx-auto rounded-3xl shadow-lg" />
-        <div class="mt-6">
-          <div class="text-gray-500">พร้อมเพย์</div>
-          <div class="text-3xl font-bold mt-2">081-234-5678</div>
-          <div class="mt-3 text-gray-600">ชื่อบัญชี: YOUR NAME</div>
+      <div class="p-8 space-y-6 text-center">
+        <div class="w-20 h-20 bg-purple-600 rounded-2xl mx-auto flex items-center justify-center text-white text-3xl font-bold shadow-md">
+          SCB
         </div>
+        <div class="space-y-4">
+          <div>
+            <div class="text-gray-400 font-semibold text-sm tracking-wide uppercase">ธนาคาร</div>
+            <div class="text-xl font-bold text-gray-700 mt-0.5">ไทยพาณิชย์ (SCB)</div>
+          </div>
+          <hr class="border-gray-100 max-w-[150px] mx-auto">
+          <div>
+            <div class="text-gray-400 font-semibold text-sm tracking-wide">เลขที่บัญชี</div>
+            <div class="text-3xl font-extrabold mt-1 text-purple-700 tracking-wider">408-888445-6</div>
+          </div>
+          <hr class="border-gray-100 max-w-[150px] mx-auto">
+          <div>
+            <div class="text-gray-400 font-semibold text-sm tracking-wide">ชื่อบัญชี</div>
+            <div class="text-xl font-bold text-gray-800 mt-1">กุลปริยา ฐานบำรุงรักษ์</div>
+          </div>
+        </div>
+        <p class="text-xs text-red-400 mt-4 bg-red-50 py-2 px-4 rounded-xl inline-block">
+          ⚠️ โอนแล้วรบกวนแนบหลักฐานสลิปด้านล่าง เพื่ออัปเดตสมุดบัญชีน้องแมวครับ
+        </p>
       </div>
     </div>
     
@@ -310,7 +326,7 @@ function openImageModal(docId) {
     document.getElementById("modalTargetImage").src = base64Data;
     document.getElementById("imageModal").classList.remove("hidden");
   } else {
-    alert("ไม่สามารถดีกข้อมูลรูปภาพได้");
+    alert("ไม่สามารถดึงข้อมูลรูปภาพได้");
   }
 }
 
@@ -373,7 +389,7 @@ financeCollectionRef.onSnapshot((snapshot) => {
       ? `<button onclick="openImageModal('finance_${item.id}')" class="bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold px-2.5 py-1 rounded-xl text-xs transition flex items-center gap-1 mx-auto">📸 ดูหลักฐาน</button>`
       : `<span class="text-gray-300 text-xs">- ไม่มี -</span>`;
 
-    // ปุ่มลบถูกเปิดให้ทุกคนแสดงขึ้นมาตลอดเวลาอย่างอิสระตามคำขอ
+    // ปุ่มลบเปิดทำงานอิสระตามคำขอเดิม
     const actionCellHtml = `
       <td class="p-4 text-center">
         <button onclick="deleteTransaction('${item.id}')" class="bg-red-50 hover:bg-red-100 text-red-500 text-xs px-2.5 py-1.5 rounded-lg font-bold transition border border-red-200 shadow-sm">
@@ -513,7 +529,7 @@ async function addNewTransaction() {
   }
 }
 
-// 🗑️ ฟังก์ชันลบรายการบัญชี (ลบปุ๊บ ระบบออนสแนปช็อตจะคำนวณยอดบริจาคและยอดคงเหลือใหม่ให้เองทันที)
+// 🗑️ ฟังก์ชันลบรายการบัญชี (ลบปุ๊บ ระบบจะคำนวณยอดบริจาคและยอดคงเหลือใหม่ให้เองทันที)
 async function deleteTransaction(itemId) {
   if (confirm("⚠️ คุณต้องการลบรายการบัญชีรายรับ-รายจ่ายชิ้นนี้ใช่หรือไม่? (ยอดบริจาคและยอดคงเหลือจะถูกปรับปรุงลดลงอัตโนมัติ)")) {
     try {
