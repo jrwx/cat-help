@@ -184,7 +184,7 @@
 </footer>
 
 <script>
-// CONFIG สำหรับเชื่อมต่อ Firebase (ใช้ค่าเดิมของคุณ)
+// CONFIG สำหรับเชื่อมต่อ Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDLL5PYwQ3aHxeA-PszAh2x3mJxTUDXdpY",
   authDomain: "cat-help-18ffb.firebaseapp.com",
@@ -200,70 +200,73 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const liveDataRef = db.collection("cat_status").doc("live_data");
 
-// 🔑 รายชื่ออีเมลผู้ดูแลระบบ (ปรับเป็นตัวพิมพ์เล็กทั้งหมดแล้วเพื่อป้องกันการตรวจพลาด)
+// 🔑 รายชื่ออีเมลผู้ดูแลระบบ
 const allowedOwners = [
   "j45phuarram@gmail.com",
   "mhiwpharr@hotmail.com"
 ];
 
-// สถานะการเปิดรับบริจาคเริ่มต้น
 let donationOpen = true;
 
-// 1. ดึงข้อมูลแบบ Realtime จาก Firebase มาแสดงบนหน้าเว็บโดยอัตโนมัติ
+// 1. ดึงข้อมูลแบบ Realtime จาก Firebase มาแสดงบนหน้าเว็บ
 liveDataRef.onSnapshot((doc) => {
   if (doc.exists) {
     const data = doc.data();
     donationOpen = data.donationOpen;
     const balance = data.totalDonation - data.totalExpense;
 
-    // เปลี่ยนข้อความบนหน้าเว็บตามฐานข้อมูล
+    // อัปเดตข้อมูลบนหน้าเว็บ
     document.getElementById("totalDonation").innerHTML = data.totalDonation.toLocaleString() + " บาท";
     document.getElementById("totalExpense").innerHTML = data.totalExpense.toLocaleString() + " บาท";
     document.getElementById("balanceAmount").innerHTML = balance.toLocaleString() + " บาท";
     document.getElementById("expenseList").innerText = data.expenseDetail;
     document.getElementById("catConditionText").innerText = data.catCondition;
 
-    // ดึงค่ามาใส่ในช่องพิมพ์ของแอดมินรอไว้เลย (ทำให้พิมพ์แก้ไขหน้าเว็บได้ง่ายขึ้น)
+    // ใส่ค่ารอไว้ในช่อง Input
     document.getElementById("donationInput").value = data.totalDonation;
     document.getElementById("expenseInput").value = data.totalExpense;
     document.getElementById("expenseDetail").value = data.expenseDetail;
     document.getElementById("catConditionInput").value = data.catCondition;
 
     updateDonationUI(donationOpen);
+  } else {
+    console.log("ไม่พบเอกสารข้อมูลในคอลเลกชัน!");
   }
+}, (error) => {
+  console.error("เกิดข้อผิดพลาดในการดึงข้อมูล: ", error);
 });
 
-// 2. ตรวจสอบสถานะหลังจากผู้ดูแลกดล็อกอินด้วย Google สำเร็จ
-firebase.auth().getRedirectResult()
-.then((result)=>{
-  const user = result.user;
+// ฟังก์ชันตรวจสอบสิทธิ์หลังล็อกอินสำเร็จ
+function checkUserAccess(user) {
   if(user){
-    // 💡 แปลงอีเมลที่ล็อกอินมาให้เป็น "ตัวพิมพ์เล็กทั้งหมด" ก่อนนำไปเช็คสิทธิ์ในระบบ
     const loggedInEmail = user.email.toLowerCase();
-
     if(allowedOwners.includes(loggedInEmail)){
-      // ถ้าอีเมลตรงกัน แผงควบคุมสีส้มจะปรากฏขึ้นมาบนหน้าเว็บทันที
       document.getElementById("ownerPanel").classList.remove("hidden");
-      document.getElementById("loginBtn").innerHTML = "🔓 บัญชีผู้ดูแล: " + user.email;
-      alert("เข้าสู่ระบบสำเร็จ! คุณสามารถแก้ไขข้อมูลหน้าเว็บได้แล้วครับ");
+      document.getElementById("loginBtn").innerHTML = "🔓 ผู้ดูแล: " + user.email;
+      alert("เข้าสู่ระบบสำเร็จ! แผงแก้ไขข้อมูลเปิดใช้งานแล้วครับ");
     }else{
-      alert("คุณไม่มีสิทธิ์เข้าใช้งานระบบผู้ดูแล (อีเมลไม่ตรงกับรายชื่อ)");
+      alert("คุณไม่มีสิทธิ์เข้าใช้งานระบบผู้ดูแล (อีเมลไม่ตรงกับระบบ)");
       firebase.auth().signOut();
     }
   }
-})
-.catch((error)=>{ 
-  console.log(error); 
-  alert("เกิดข้อผิดพลาด: " + error.message);
+}
+
+// เช็คสิทธิ์กรณีผู้ใช้เคยล็อกอินค้างไว้แล้ว
+firebase.auth().onAuthStateChanged((user) => {
+  if (user) {
+    checkUserAccess(user);
+  }
 });
 
-// ฟังก์ชันสั่งล็อกอินด้วย Google
+// 2. ปรับการสั่งล็อกอินเป็นแบบ Popup เพื่อให้ใช้งานบนเครื่องคอมพิวเตอร์ทั่วไปได้ง่ายขึ้น
 async function loginWithGoogle(){
   const provider = new firebase.auth.GoogleAuthProvider();
   try{
-    await firebase.auth().signInWithRedirect(provider);
+    const result = await firebase.auth().signInWithPopup(provider);
+    checkUserAccess(result.user);
   }catch(error){
-    alert(error.message);
+    console.error(error);
+    alert("เกิดข้อผิดพลาดในการล็อกอิน: " + error.message);
   }
 }
 
@@ -275,7 +278,6 @@ async function updateFinance(){
   const condition = document.getElementById("catConditionInput").value;
 
   try {
-    // ส่งข้อมูลใหม่ไปอัปเดตบนคลาวด์ Firebase หน้าเว็บจะเปลี่ยนตามทันที
     await liveDataRef.update({
       totalDonation: donation,
       totalExpense: expense,
@@ -320,6 +322,5 @@ function updateDonationUI(isOpen) {
     toggleBtn.className = "w-full bg-green-500 hover:bg-green-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg";
   }
 }
-
-</body>
+</script> </body>
 </html>
