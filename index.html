@@ -389,13 +389,14 @@ financeCollectionRef.onSnapshot((snapshot) => {
       ? `<button onclick="openImageModal('finance_${item.id}')" class="bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold px-2.5 py-1 rounded-xl text-xs transition flex items-center gap-1 mx-auto">📸 ดูหลักฐาน</button>`
       : `<span class="text-gray-300 text-xs">- ไม่มี -</span>`;
 
-    // ปุ่มลบเปิดทำงานอิสระตามคำขอเดิม
-    const actionCellHtml = `
-      <td class="p-4 text-center">
-        <button onclick="deleteTransaction('${item.id}')" class="bg-red-50 hover:bg-red-100 text-red-500 text-xs px-2.5 py-1.5 rounded-lg font-bold transition border border-red-200 shadow-sm">
-          🗑️ ลบ
-        </button>
-      </td>`;
+        // แก้ไข: แสดงปุ่มลบเฉพาะเมื่อเจ้าของเข้าสู่ระบบเท่านั้น
+    const actionCellHtml = isOwnerLoggedIn 
+      ? `<td class="p-4 text-center">
+          <button onclick="deleteTransaction('${item.id}')" class="bg-red-50 hover:bg-red-100 text-red-500 text-xs px-2.5 py-1.5 rounded-lg font-bold transition border border-red-200 shadow-sm">
+            🗑️ ลบ
+          </button>
+        </td>`
+      : `<td class="p-4 text-center text-gray-300 text-xs">-</td>`;
 
     html += `
       <tr class="hover:bg-orange-50/30 transition text-sm md:text-base">
@@ -531,6 +532,13 @@ async function addNewTransaction() {
 
 // 🗑️ ฟังก์ชันลบรายการบัญชี (ลบปุ๊บ ระบบจะคำนวณยอดบริจาคและยอดคงเหลือใหม่ให้เองทันที)
 async function deleteTransaction(itemId) {
+  async function deleteTransaction(itemId) {
+  // เพิ่มบรรทัดนี้เพื่อป้องกันการลบถ้าไม่ได้ล็อกอิน
+  if (!isOwnerLoggedIn) {
+    alert("❌ คุณไม่มีสิทธิ์ลบรายการนี้!");
+    return;
+  }
+
   if (confirm("⚠️ คุณต้องการลบรายการบัญชีรายรับ-รายจ่ายชิ้นนี้ใช่หรือไม่? (ยอดบริจาคและยอดคงเหลือจะถูกปรับปรุงลดลงอัตโนมัติ)")) {
     try {
       await financeCollectionRef.doc(itemId).delete();
@@ -897,11 +905,11 @@ async function submitDonationSlip() {
   const donorNameVal = nameInput.value.trim();
 
   if (!amtInput.value || amountVal <= 0) {
-    alert("❌ กรุณาระบุจำนวนเงินที่โอนให้ถูกต้องด้วยนะครับ");
+    alert("❌ กรุณาระบุจำนวนเงินที่โอนให้ถูกต้องด้วยนะคะพี่พี่");
     return;
   }
   if (!fileInput.files || fileInput.files.length === 0) {
-    alert("❌ กรุณาเลือกไฟล์รูปภาพสลิปธนาคารก่อนกดส่งนะครับ");
+    alert("❌ กรุณาเลือกไฟล์รูปภาพสลิปธนาคารก่อนกดส่งนะคะพี่พี่");
     return;
   }
 
@@ -927,7 +935,7 @@ async function submitDonationSlip() {
 
     // 2. แทรกข้อมูลเข้าตารางบัญชี "รายรับ-รายจ่าย" อัตโนมัติ
     let displayDonorName = donorNameVal ? `คุณ ${donorNameVal}` : "คุณผู้ใจดี";
-    let commentStr = `${displayDonorName} ร่วมบริจาค (สลิปส่งจากหน้าเว็บ)`;
+    let commentStr = `${displayDonorName} ร่วมบริจาค `;
     
     if (msgInput.value.trim()) {
       commentStr += ` - "${msgInput.value.trim()}"`;
@@ -946,7 +954,7 @@ async function submitDonationSlip() {
     amtInput.value = "";
     fileInput.value = "";
     msgInput.value = "";
-    alert("💖 บันทึกยอดเงินในชื่อของคุณเรียบร้อยแล้ว ขอบคุณสำหรับความเมตตาแทนน้องแมวด้วยนะครับ!");
+    alert("💖 บันทึกยอดเงินในชื่อของคุณพี่เรียบร้อยแล้ว ขอบคุณสำหรับความเมตตาแทนน้องแมวด้วยน้า!");
   } catch (error) {
     alert("เกิดข้อผิดพลาดในการส่งข้อมูล: " + error.message);
   } finally {
@@ -960,7 +968,7 @@ async function deleteSlip(docId) {
   if (confirm("คุณต้องการลบสลิปนี้ออกจากคิวตรวจสอบใช่ไหม? (ไม่ส่งผลกระทบต่อยอดเงินที่บันทึกในตารางบัญชีไปแล้ว)")) {
     try {
       await slipsCollectionRef.doc(docId).delete();
-      alert("ลบรายการสลิปจากคิวเรียบร้อยแล้วครับ");
+      alert("ลบรายการสลิปจากคิวเรียบร้อยจ้า");
     } catch (error) {
       alert("ไม่สามารถลบสลิปได้: " + error.message);
     }
