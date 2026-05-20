@@ -201,6 +201,7 @@
 </footer>
 
 <script>
+// CONFIG สำหรับเชื่อมต่อ Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDLL5PYwQ3aHxeA-PszAh2x3mJxTUDXdpY",
   authDomain: "cat-help-18ffb.firebaseapp.com",
@@ -211,10 +212,12 @@ const firebaseConfig = {
   measurementId: "G-LEB15WNE0X"
 };
 
+// เริ่มทำงานระบบ Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const liveDataRef = db.collection("cat_status").doc("live_data");
 
+// 🔑 รายชื่ออีเมลผู้ดูแลระบบ
 const allowedOwners = [
   "j45phuarram@gmail.com",
   "mhiwpharr@hotmail.com"
@@ -287,43 +290,49 @@ function checkUserAccess(user) {
     if(allowedOwners.includes(loggedInEmail)){
       isUserLoggedIn = true;
       document.getElementById("ownerPanel").classList.remove("hidden");
-      document.getElementById("loginBtn").innerHTML = "🚪 Logout"; // เปลี่ยนคำบนปุ่มแสดงแค่ปุ่มล็อกเอาท์แทน
+      document.getElementById("loginBtn").innerHTML = "🚪 Logout"; 
       document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
     }else{
       alert("คุณไม่มีสิทธิ์เข้าใช้งานระบบผู้ดูแล");
       firebase.auth().signOut();
     }
+  }
+}
+
+// ตรวจจับสถานะการล็อกอินปัจจุบันแบบเรียลไทม์ (ปรับใหม่ไม่ใช้ Redirect แล้ว)
+firebase.auth().onAuthStateChanged((user) => {
+  if (user) {
+    checkUserAccess(user);
   } else {
-    // ถ้าผู้ใช้ไม่ได้ล็อกอินอยู่ ให้ซ่อนหน้าต่างทั้งหมดทันที
     isUserLoggedIn = false;
     document.getElementById("ownerPanel").classList.add("hidden");
     document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
     document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
   }
-}
-
-// ตรวจจับสถานะการล็อกอินปัจจุบันแบบเรียลไทม์
-firebase.auth().onAuthStateChanged((user) => {
-  checkUserAccess(user);
 });
 
-// ฟังก์ชันศูนย์กลางจัดการปุ่มกด ล็อกอิน/ล็อกเอาท์
-function handleAuthAction() {
+// ฟังก์ชันศูนย์กลางจัดการปุ่มกด ล็อกอิน/ล็อกเอาท์ (แก้ไขใหม่เพื่อแก้บั๊ก Initial State 🛠️)
+async function handleAuthAction() {
   if (isUserLoggedIn) {
-    // ถ้าล็อกอินอยู่แล้วให้ทำการ Logout ทันที
-    firebase.auth().signOut().then(() => {
+    try {
+      await firebase.auth().signOut();
       alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
-    });
+      location.reload(); 
+    } catch (error) {
+      alert("เกิดข้อผิดพลาดในการล็อกเอาท์: " + error.message);
+    }
   } else {
-    // ถ้ายังไม่ได้ล็อกอิน ให้เริ่มกระบวนการ Popup Sign-in 
     const provider = new firebase.auth.GoogleAuthProvider();
-    firebase.auth().signInWithPopup(provider)
-      .then((result) => {
-        checkUserAccess(result.user);
-      })
-      .catch((error) => {
-        alert("เกิดข้อผิดพลาดในการล็อกอิน: " + error.message);
-      });
+    // บังคับให้บราวเซอร์เปิดหน้าเลือกบัญชีใหม่ทุกครั้ง เพื่อล้างค่าเออร์เรอร์เดิมที่ค้างอยู่
+    provider.setCustomParameters({ prompt: 'select_account' }); 
+    
+    try {
+      const result = await firebase.auth().signInWithPopup(provider);
+      checkUserAccess(result.user);
+    } catch (error) {
+      console.error(error);
+      alert("เข้าสู่ระบบไม่สำเร็จ: บราวเซอร์ของคุณอาจบล็อกการเก็บข้อมูลคุกกี้ ให้ลองเปิดเว็บนี้ด้วยโหมดไม่ระบุตัวตน (Incognito) หรือเปิดผ่านเซิร์ฟเวอร์จำลองจำพวก Live Server ครับ");
+    }
   }
 }
 
@@ -345,12 +354,10 @@ async function addNewConditionLog() {
   };
 
   try {
-    // ใช้คำสั่ง arrayUnion เพื่อเพิ่มก้อนข้อมูลใหม่เข้าไปต่อท้ายในตารางข้อมูลบน Firebase โดยตรง
     await liveDataRef.update({
       conditions: firebase.firestore.FieldValue.arrayUnion(newLog)
     });
     
-    // ล้างค่าข้อมูลในกล่องป้อนข้อมูลหลังส่งเสร็จเพื่อรองรับการกรอกครั้งถัดไป
     document.getElementById("newLogDate").value = "";
     document.getElementById("newLogImage").value = "";
     document.getElementById("newLogContent").value = "";
