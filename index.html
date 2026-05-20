@@ -270,16 +270,36 @@ liveDataRef.onSnapshot((doc) => {
   }
 });
 
-// 2. ดึงข้อมูลบันทึกอาการวันต่อวัน
-logsCollectionRef.onSnapshot((snapshot) => {
-  // ดึงข้อมูลมาเรียงลำดับฝั่งไคลเอนต์เพื่อเลี่ยงปัญหาเรื่อง Index ของ Firebase พัง
+// 2. ดึงข้อมูลบันทึกอาการวันต่อวัน แบบกระจายน้ำหนักข้อมูลรูปภาพเรียลไทม์
+logsCollectionRef.onSnapshot(async (snapshot) => {
   const docs = [];
-  snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+  
+  // ใช้ Promise.all เพื่อทำการโหลดซับคอลเลกชันรูปภาพของแต่ละวันมาพร้อม ๆ กัน
+  const fetchPromises = [];
+  
+  snapshot.forEach((doc) => {
+    const logData = { id: doc.id, ...doc.data(), imagesArray: [] };
+    docs.push(logData);
+    
+    // ทำการดึงภาพแยกจาก Sub-collection ข้อมูลไม่พังแน่นอน
+    const p = doc.ref.collection("images").get().then((imgSnapshot) => {
+      const imgs = [];
+      imgSnapshot.forEach(imgDoc => {
+        imgs.push(imgDoc.data().base64);
+      });
+      logData.imagesArray = imgs;
+    });
+    fetchPromises.push(p);
+  });
+  
+  await Promise.all(fetchPromises);
+  
+  // เรียงลำดับฝั่ง Client จากเวลาล่าสุดมาเก่าสุด
   docs.sort((a, b) => (b.logTimestamp || 0) - (a.logTimestamp || 0));
   renderTimelineFromDocs(docs);
 });
 
-// 3. ดึงข้อมูลคิวสลิปบริจาคแบบ Realtime (แก้ไขบั๊กตัวสั่ง orderBy ที่ทำให้ระบบแน่นิ่งออกแล้ว)
+// 3. ดึงข้อมูลคิวสลิปบริจาคแบบ Realtime
 slipsCollectionRef.onSnapshot((snapshot) => {
   const tableBody = document.getElementById("slipTableBody");
   if (snapshot.empty) {
@@ -287,7 +307,6 @@ slipsCollectionRef.onSnapshot((snapshot) => {
     return;
   }
 
-  // ดึงข้อมูลและเรียงลำดับผ่าน JavaScript แทนการใช้คลาวด์สั่งเรียงเพื่อความปลอดภัย 100%
   const slipDocs = [];
   snapshot.forEach(doc => slipDocs.push({ id: doc.id, ...doc.data() }));
   slipDocs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
@@ -331,18 +350,16 @@ function renderTimelineFromDocs(docsArray) {
     const logId = log.id;
     let imagesHtml = "";
     
-    if (log.imagesJoined && typeof log.imagesJoined === 'string') {
-      const imgList = log.imagesJoined.split("||");
+    // ดึงรูปภาพจาก Array ออกมาเรนเดอร์ทีละชิ้น
+    if (log.imagesArray && log.imagesArray.length > 0) {
       imagesHtml = `<div class="grid grid-cols-2 gap-2 mt-2">`;
-      imgList.forEach((imgSrc) => {
-        if (imgSrc.trim() !== "") {
-          imagesHtml += `
-            <div class="overflow-hidden rounded-xl border border-orange-200 bg-white">
-              <a href="${imgSrc}" target="_blank">
-                <img src="${imgSrc}" class="w-full h-40 object-cover hover:scale-105 transition duration-300" onerror="this.src='https://placehold.co/600x400?text=รูปภาพไม่ถูกต้อง'"/>
-              </a>
-            </div>`;
-        }
+      log.imagesArray.forEach((imgSrc) => {
+        imagesHtml += `
+          <div class="overflow-hidden rounded-xl border border-orange-200 bg-white">
+            <a href="${imgSrc}" target="_blank">
+              <img src="${imgSrc}" class="w-full h-40 object-cover hover:scale-105 transition duration-300" onerror="this.src='https://placehold.co/600x400?text=รูปภาพไม่ถูกต้อง'"/>
+            </a>
+          </div>`;
       });
       imagesHtml += `</div>`;
     }
@@ -375,12 +392,6 @@ function handleAdminAuth() {
     document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
     document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
     
-    logsCollectionRef.get().then((snapshot) => {
-      const docs = [];
-      snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
-      docs.sort((a, b) => (b.logTimestamp || 0) - (a.logTimestamp || 0));
-      renderTimelineFromDocs(docs);
-    });
     alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
   } else {
     const userInput = prompt("👤 กรุณากรอก 'ชื่อผู้ใช้' (Username) :");
@@ -394,12 +405,6 @@ function handleAdminAuth() {
       document.getElementById("loginBtn").innerHTML = "🚪 Logout (ผู้ดูแล)";
       document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
       
-      logsCollectionRef.get().then((snapshot) => {
-        const docs = [];
-        snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
-        docs.sort((a, b) => (b.logTimestamp || 0) - (a.logTimestamp || 0));
-        renderTimelineFromDocs(docs);
-      });
       alert("🔓 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณผู้ดูแลระบบครับ");
     } else {
       alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง! ปฏิเสธการเข้าถึง");
@@ -407,7 +412,79 @@ function handleAdminAuth() {
   }
 }
 
-// 📤 ฟังก์ชันส่งรูปภาพสลิปเข้าคอลเลกชันย่อย (ปรับปรุงตัวดักจับแก้แน่นิ่ง)
+// ➕ ฟังก์ชันเพิ่มบันทึกอาการประจำวัน (แก้ไขจุดเก็บข้อมูลภาพเพื่อแก้บั๊ก nested entity ถาวร)
+async function addNewConditionLog() {
+  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
+  
+  const rawDateVal = document.getElementById("newLogDate").value;
+  const filesInput = document.getElementById("newLogImagesInput");
+  const contentVal = document.getElementById("newLogContent").value.trim();
+  const addLogBtn = document.getElementById("addLogBtn");
+
+  if (!rawDateVal || !contentVal) {
+    alert("กรุณาเลือกวันที่จากปฏิทินและกรอกรายละเอียดอาการของน้องแมวด้วยครับ");
+    return;
+  }
+
+  addLogBtn.disabled = true;
+  addLogBtn.innerHTML = "⏳ กำลังบันทึกข้อมูลอาการลงไทม์ไลน์...";
+
+  const dateObj = new Date(rawDateVal);
+  const thaiMonths = ["มกรารม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+  const formattedThaiDate = `${dateObj.getDate()} ${thaiMonths[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
+
+  try {
+    // 1. บันทึกข้อมูลข้อความหลักลง Document ก่อนเพื่อดึงรหัสไอดีหลัก (Doc ID)
+    const newLogRef = await logsCollectionRef.add({
+      date: formattedThaiDate,
+      content: contentVal,
+      logTimestamp: dateObj.getTime()
+    });
+    
+    // 2. ถ้าผู้ใช้มีการเลือกรูปภาพ ให้กระจายน้ำหนักแยกไปบันทึกใน Sub-collection ของใครของมัน ข้อมูลไม่ล้นแน่นอน
+    if (filesInput.files && filesInput.files.length > 0) {
+      for (let i = 0; i < filesInput.files.length; i++) {
+        const base64Str = await convertFileToBase64(filesInput.files[i]);
+        await newLogRef.collection("images").add({
+          base64: base64Str,
+          uploadedAt: Date.now()
+        });
+      }
+    }
+    
+    document.getElementById("newLogDate").value = "";
+    document.getElementById("newLogImagesInput").value = "";
+    document.getElementById("newLogContent").value = "";
+    alert("เพิ่มข้อมูลอาการประจำวันลงไทม์ไลน์เรียบร้อยแล้ว! 🎉");
+  } catch (error) {
+    alert("ไม่สามารถเพิ่มข้อมูลอาการได้เนื่องจาก: " + error.message);
+  } finally {
+    addLogBtn.disabled = false;
+    addLogBtn.innerHTML = "✨ เพิ่มบันทึกวันนี้น้องลงไทม์ไลน์";
+  }
+}
+
+async function deleteConditionLog(logId) {
+  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
+  if (confirm("⚠️ คุณแน่ใจใช่ไหมว่าต้องการลบบันทึกอาการของวันนี้ทิ้งอย่างถาวร?")) {
+    try {
+      // ทำการลบรูปภาพใน Sub-collection ก่อน
+      const imgSnapshot = await logsCollectionRef.doc(logId).collection("images").get();
+      const deletePromises = [];
+      imgSnapshot.forEach(imgDoc => {
+        deletePromises.push(imgDoc.ref.delete());
+      });
+      await Promise.all(deletePromises);
+
+      // แล้วลบตัว Document อาการหลัก
+      await logsCollectionRef.doc(logId).delete();
+      alert("ลบข้อมูลบันทึกอาการเรียบร้อยแล้วครับ!");
+    } catch (error) {
+      alert("ไม่สามารถลบข้อมูลได้เนื่องจาก: " + error.message);
+    }
+  }
+}
+
 async function submitDonationSlip() {
   const fileInput = document.getElementById("slipFileInput");
   const msgInput = document.getElementById("slipMessageInput");
@@ -438,75 +515,6 @@ async function submitDonationSlip() {
   } finally {
     submitBtn.disabled = false;
     submitBtn.innerHTML = "ส่งสลิป 💖";
-  }
-}
-
-async function addNewConditionLog() {
-  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
-  
-  const rawDateVal = document.getElementById("newLogDate").value;
-  const filesInput = document.getElementById("newLogImagesInput");
-  const contentVal = document.getElementById("newLogContent").value.trim();
-  const addLogBtn = document.getElementById("addLogBtn");
-
-  if (!rawDateVal || !contentVal) {
-    alert("กรุณาเลือกวันที่จากปฏิทินและกรอกรายละเอียดอาการของน้องแมวด้วยครับ");
-    return;
-  }
-
-  addLogBtn.disabled = true;
-  addLogBtn.innerHTML = "⏳ กำลังบันทึกข้อมูลอาการลงไทม์ไลน์...";
-
-  const dateObj = new Date(rawDateVal);
-  const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-  const formattedThaiDate = `${dateObj.getDate()} ${thaiMonths[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
-
-  let imagesJoinedString = "";
-  if (filesInput.files && filesInput.files.length > 0) {
-    try {
-      let base64List = [];
-      for (let i = 0; i < filesInput.files.length; i++) {
-        const base64Str = await convertFileToBase64(filesInput.files[i]);
-        base64List.push(base64Str);
-      }
-      imagesJoinedString = base64List.join("||"); 
-    } catch (e) {
-      alert("เกิดข้อผิดพลาดในการประมวลผลไฟล์ภาพของคุณ");
-      addLogBtn.disabled = false;
-      addLogBtn.innerHTML = "✨ เพิ่มบันทึกวันนี้น้องลงไทม์ไลน์";
-      return;
-    }
-  }
-
-  try {
-    await logsCollectionRef.add({
-      date: formattedThaiDate,
-      imagesJoined: imagesJoinedString !== "" ? imagesJoinedString : null,
-      content: contentVal,
-      logTimestamp: dateObj.getTime()
-    });
-    
-    document.getElementById("newLogDate").value = "";
-    document.getElementById("newLogImagesInput").value = "";
-    document.getElementById("newLogContent").value = "";
-    alert("เพิ่มข้อมูลอาการประจำวันลงไทม์ไลน์เรียบร้อยแล้ว! 🎉");
-  } catch (error) {
-    alert("ไม่สามารถเพิ่มข้อมูลอาการได้เนื่องจาก: " + error.message);
-  } finally {
-    addLogBtn.disabled = false;
-    addLogBtn.innerHTML = "✨ เพิ่มบันทึกวันนี้น้องลงไทม์ไลน์";
-  }
-}
-
-async function deleteConditionLog(logId) {
-  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
-  if (confirm("⚠️ คุณแน่ใจใช่ไหมว่าต้องการลบบันทึกอาการของวันนี้ทิ้งอย่างถาวร?")) {
-    try {
-      await logsCollectionRef.doc(logId).delete();
-      alert("ลบข้อมูลบันทึกอาการเรียบร้อยแล้วครับ!");
-    } catch (error) {
-      alert("ไม่สามารถลบข้อมูลได้เนื่องจาก: " + error.message);
-    }
   }
 }
 
