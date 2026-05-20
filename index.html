@@ -266,7 +266,7 @@
           </div>
         </div>
         <div>
-          <label class="text-sm font-semibold text-gray-600 block mb-1">🖼️ เลือกไฟล์รูปภาพสลิป *</label>
+          <label id="slipFileLabel" class="text-sm font-semibold text-gray-600 block mb-1">🖼️ เลือกไฟล์รูปภาพสลิป *</label>
           <input id="slipFileInput" type="file" accept="image/*" class="w-full p-4 rounded-2xl border border-orange-200 text-sm" />
         </div>
         <div>
@@ -331,7 +331,7 @@ let isOwnerLoggedIn = false;
 let donationOpen = true;
 let currentSlipDataMap = {}; 
 let globalFinanceItems = []; 
-let globalTimelineItems = []; // ตัวแปร Global เก็บข้อมูลไทม์ไลน์อาการแมวชุดปัจจุบัน
+let globalTimelineItems = []; 
 
 function openImageModal(docId) {
   const base64Data = currentSlipDataMap[docId];
@@ -472,8 +472,8 @@ logsCollectionRef.onSnapshot(async (snapshot) => {
   await Promise.all(fetchPromises);
   docs.sort((a, b) => (b.logTimestamp || 0) - (a.logTimestamp || 0));
   
-  globalTimelineItems = docs; // จดจำข้อมูลชุดล่าสุดลงตัวแปร Global
-  renderTimelineFromDocs();   // สั่งเรนเดอร์ลงหน้าจอ
+  globalTimelineItems = docs; 
+  renderTimelineFromDocs();   
 });
 
 slipsCollectionRef.onSnapshot((snapshot) => {
@@ -487,7 +487,9 @@ slipsCollectionRef.onSnapshot((snapshot) => {
   snapshot.forEach(doc => {
     const sData = { id: doc.id, ...doc.data() };
     slipDocs.push(sData);
-    currentSlipDataMap[doc.id] = sData.image; 
+    if(sData.image) {
+      currentSlipDataMap[doc.id] = sData.image; 
+    }
   });
   
   slipDocs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
@@ -499,16 +501,19 @@ slipsCollectionRef.onSnapshot((snapshot) => {
     const amtStr = slipData.amount ? Number(slipData.amount).toLocaleString() + " บาท" : "ไม่ระบุ";
     const donorName = slipData.donorName ? slipData.donorName : '<span class="text-gray-400 italic">คุณผู้ใจดี</span>';
 
+    // ตรวจสอบว่ามีรูปภาพหรือไม่ ถ้าไม่มีให้แสดงสถานะแทน
+    const receiptHtml = slipData.image 
+      ? `<button onclick="openImageModal('${docId}')" class="block focus:outline-none" title="คลิกเพื่อขยายรูปสลิป">
+            <img src="${slipData.image}" class="w-16 h-20 object-cover rounded-lg border border-slate-200 shadow-sm hover:scale-110 cursor-zoom-in transition" />
+         </button>`
+      : `<span class="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded font-semibold border border-orange-200">Owner บันทึกตรง</span>`;
+
     html += `
       <tr class="hover:bg-slate-50 transition">
         <td class="p-3 text-gray-600 font-medium">${dateStr}</td>
         <td class="p-3 text-gray-800 font-semibold">${donorName}</td>
         <td class="p-3 text-green-600 font-bold">${amtStr}</td>
-        <td class="p-3">
-          <button onclick="openImageModal('${docId}')" class="block focus:outline-none" title="คลิกเพื่อขยายรูปสลิป">
-            <img src="${slipData.image}" class="w-16 h-20 object-cover rounded-lg border border-slate-200 shadow-sm hover:scale-110 cursor-zoom-in transition" />
-          </button>
-        </td>
+        <td class="p-3">${receiptHtml}</td>
         <td class="p-3 text-gray-700 max-w-xs break-words">${slipData.message || '<span class="text-gray-300">- ไม่ระบุข้อความ -</span>'}</td>
         <td class="p-3 text-center">
           <button onclick="deleteSlip('${docId}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-xl transition text-xs">
@@ -598,7 +603,6 @@ function renderTimelineFromDocs() {
       imagesHtml += `</div>`;
     }
 
-    // ปุ่มลบอาการสีแดง แสดงผลเฉพาะเมื่อเจ้าของระบบ (Admin) ทำการล็อกอินสำเร็จเท่านั้น
     const deleteBtnHtml = isOwnerLoggedIn 
       ? `<button onclick="deleteConditionLog('${logId}')" class="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-full border border-red-200 transition shadow-sm">❌ ลบส่วนนี้</button>` 
       : "";
@@ -621,14 +625,16 @@ const ADMIN_USER = "แมวน้อย";
 const ADMIN_PASS = "12345";
 
 function handleAdminAuth() {
+  const labelEl = document.getElementById("slipFileLabel");
   if (isOwnerLoggedIn) {
     isOwnerLoggedIn = false;
     document.getElementById("ownerPanel").classList.add("hidden");
     document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
     document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
+    if (labelEl) labelEl.innerHTML = "🖼️ เลือกไฟล์รูปภาพสลิป *"; // ปรับคำแนะนำกลับเป็นบังคับ
     alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
     renderFinanceTable(); 
-    renderTimelineFromDocs(); // บังคับอัปเดตเพื่อซ่อนปุ่มลบอาการ
+    renderTimelineFromDocs(); 
   } else {
     const userInput = prompt("👤 กรุณากรอก 'ชื่อผู้ใช้' (Username) :");
     if (userInput === null) return; 
@@ -640,9 +646,10 @@ function handleAdminAuth() {
       document.getElementById("ownerPanel").classList.remove("hidden");
       document.getElementById("loginBtn").innerHTML = "🚪 Logout (ผู้ดูแล)";
       document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
+      if (labelEl) labelEl.innerHTML = "🖼️ เลือกไฟล์รูปภาพสลิป (เฉพาะ Owner: ไม่ต้องเลือกก็ได้)"; // บอกให้รู้ว่าเว้นได้
       alert("🔓 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณผู้ดูแลระบบครับ");
       renderFinanceTable(); 
-      renderTimelineFromDocs(); // บังคับอัปเดตเพื่อโชว์ปุ่มลบอาการสำหรับ Admin
+      renderTimelineFromDocs(); 
     } else {
       alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง!");
     }
@@ -766,8 +773,11 @@ async function submitDonationSlip() {
     alert("❌ กรุณาระบุจำนวนเงินให้ถูกต้อง");
     return;
   }
-  if (!fileInput.files || fileInput.files.length === 0) {
-    alert("❌ กรุณาเลือกไฟล์สลิป");
+
+  // [จุดแก้ไขสำคัญ] เช็กเงื่อนไขการแนบสลิป: ถ้าไม่ใช่ Owner และยังไม่ได้เลือกไฟล์ ให้บล็อกทันที
+  const hasFile = fileInput.files && fileInput.files.length > 0;
+  if (!isOwnerLoggedIn && !hasFile) {
+    alert("❌ กรุณาเลือกไฟล์รูปภาพหลักฐานสลิปด้วยครับ");
     return;
   }
 
@@ -775,28 +785,38 @@ async function submitDonationSlip() {
   submitBtn.innerHTML = "⏳ กำลังส่งหลักฐาน...";
 
   try {
-    const compressedSlipBase64 = await compressAndResizeImage(fileInput.files[0]);
-    const nowTimestamp = Date.now();
+    // ถ้ามีไฟล์ให้แปลงเป็น Base64 ถ้าไม่มี (ในกรณี Owner) ให้ส่งเป็น null
+    let compressedSlipBase64 = null;
+    if (hasFile) {
+      compressedSlipBase64 = await compressAndResizeImage(fileInput.files[0]);
+    }
     
+    const nowTimestamp = Date.now();
     const dateObj = new Date();
     const thaiMonthsShort = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
     const formattedThaiDate = `${dateObj.getDate()} ${thaiMonthsShort[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
 
+    // 1. บันทึกลงคิวตรวจสอบสลิป (slips collection)
     await slipsCollectionRef.add({
       donorName: donorNameVal || "",
       amount: amountVal,
-      image: compressedSlipBase64,
+      image: compressedSlipBase64, // จะเป็น Base64 หรือ null ก็ได้
       message: msgInput.value.trim(),
       timestamp: nowTimestamp
     });
 
+    // 2. จัดรูปแบบข้อความแสดงในตารางรายรับ-รายจ่าย
     let displayDonorName = donorNameVal ? `คุณ ${donorNameVal}` : "คุณผู้ใจดี";
-    let commentStr = `${displayDonorName} ร่วมบริจาค `;
+    if (isOwnerLoggedIn && !donorNameVal) {
+      displayDonorName = "Owner (บันทึกแทน)";
+    }
     
+    let commentStr = `${displayDonorName} ร่วมบริจาค `;
     if (msgInput.value.trim()) {
       commentStr += ` - "${msgInput.value.trim()}"`;
     }
 
+    // 3. บันทึกลงสมุดบัญชีรายรับ-รายจ่ายทันที (finance collection)
     await financeCollectionRef.add({
       date: formattedThaiDate,
       type: "income",
@@ -810,7 +830,7 @@ async function submitDonationSlip() {
     amtInput.value = "";
     fileInput.value = "";
     msgInput.value = "";
-    alert("💖 ส่งสลิปเรียบร้อย ขอบคุณมากครับ!");
+    alert("💖 บันทึกรายการบริจาคเข้าสู่ระบบเรียบร้อยแล้วครับ!");
   } catch (error) {
     alert("เกิดข้อผิดพลาดในการส่งข้อมูล: " + error.message);
   } finally {
