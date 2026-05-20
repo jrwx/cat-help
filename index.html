@@ -93,8 +93,8 @@
       
       <div class="p-4 bg-red-50 border border-red-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
         <div>
-          <h5 class="font-bold text-red-600">🧹 ปุ่มล้างระบบไทม์ไลน์ที่พัง (เวอร์ชัน 2 รีเซ็ตคลีนชัวร์)</h5>
-          <p class="text-xs text-gray-500">กดปุ่มนี้เพื่อใช้คำสั่งล้างข้อมูลและฟอร์แมตเก่าที่ล็อกบั๊กคาไว้ในคลาวด์ทิ้งไปครับ</p>
+          <h5 class="font-bold text-red-600">🧹 ปุ่มล้างระบบไทม์ไลน์ที่พัง</h5>
+          <p class="text-xs text-gray-500">กดปุ่มนี้หากต้องการเคลียร์หรือล้างโครงสร้างไทม์ไลน์เก่าที่ล็อกเออร์เรอร์ออกไปครับ</p>
         </div>
         <button onclick="clearAllConditionsData()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow">
           ล้างไทม์ไลน์เก่าทั้งหมด
@@ -135,6 +135,27 @@
         <button onclick="addNewConditionLog()" class="w-full bg-emerald-500 hover:bg-emerald-600 transition text-white py-3 rounded-xl font-semibold text-sm shadow">
           ✨ เพิ่มบันทึกวันนี้น้องลงไทม์ไลน์
         </button>
+      </div>
+
+      <div class="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+        <h4 class="font-bold text-slate-700 text-lg">📋 รายการสลิปบริจาคที่ส่งเข้ามา</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse bg-white rounded-xl overflow-hidden shadow-sm">
+            <thead>
+              <tr class="bg-slate-200 text-slate-700 text-sm">
+                <th class="p-3 font-semibold">วัน-เวลาที่ส่ง</th>
+                <th class="p-3 font-semibold">รูปภาพสลิป</th>
+                <th class="p-3 font-semibold">ข้อความให้กำลังใจ</th>
+                <th class="p-3 font-semibold text-center">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="slipTableBody" class="text-sm divide-y divide-slate-100">
+              <tr>
+                <td colspan="4" class="p-4 text-center text-gray-400">ยังไม่มีสลิปส่งเข้ามา หรือ กำลังโหลดข้อมูล...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <button onclick="updateFinance()" class="w-full bg-orange-500 hover:bg-orange-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
@@ -192,9 +213,9 @@
         <h2 class="text-3xl font-bold">📤 แนบสลิปบริจาค</h2>
       </div>
       <div class="p-8 space-y-5">
-        <input type="file" class="w-full p-4 rounded-2xl border border-orange-200" />
-        <textarea rows="4" placeholder="ข้อความให้กำลังใจน้อง (ไม่บังคับ)" class="w-full p-4 rounded-2xl border border-orange-200"></textarea>
-        <button class="w-full bg-orange-500 hover:bg-orange-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
+        <input id="slipFileInput" type="file" accept="image/*" class="w-full p-4 rounded-2xl border border-orange-200" />
+        <textarea id="slipMessageInput" rows="4" placeholder="ข้อความให้กำลังใจน้อง (ไม่บังคับ)" class="w-full p-4 rounded-2xl border border-orange-200"></textarea>
+        <button id="submitSlipBtn" onclick="submitDonationSlip()" class="w-full bg-orange-500 hover:bg-orange-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
           ส่งสลิป 💖
         </button>
       </div>
@@ -224,6 +245,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const liveDataRef = db.collection("cat_status").doc("live_data");
+const slipsCollectionRef = db.collection("slips"); // คอลเลกชันใหม่สำหรับสลิป
 
 const ADMIN_USER = "แมวน้อย";
 const ADMIN_PASS = "12345";
@@ -232,11 +254,11 @@ let isOwnerLoggedIn = false;
 let donationOpen = true;
 let currentConditionsArray = []; 
 
-// ดึงค่าการเงินปัจจุบันมาเป็นตัวแปรสำรอง
 let currentDonationTotal = 0;
 let currentExpenseTotal = 0;
 let currentExpenseDetailStr = "";
 
+// ดึงข้อมูลหลักและไทม์ไลน์
 liveDataRef.onSnapshot((doc) => {
   if (doc.exists) {
     const data = doc.data();
@@ -261,6 +283,40 @@ liveDataRef.onSnapshot((doc) => {
     renderTimeline(currentConditionsArray);
     updateDonationUI(donationOpen);
   }
+});
+
+// ดึงข้อมูลสลิปแบบ Realtime (จะดึงมาอัปเดตใส่ตารางเมื่อมีการส่งเข้ามา)
+slipsCollectionRef.orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+  const tableBody = document.getElementById("slipTableBody");
+  if (snapshot.empty) {
+    tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">ยังไม่มีข้อมูลสลิปบริจาคส่งเข้ามาในขณะนี้</td></tr>`;
+    return;
+  }
+
+  let html = "";
+  snapshot.forEach((doc) => {
+    const slipData = doc.data();
+    const docId = doc.id;
+    const dateStr = slipData.timestamp ? new Date(slipData.timestamp).toLocaleString('th-TH') : "ไม่ระบุเวลา";
+
+    html += `
+      <tr class="hover:bg-slate-50 transition">
+        <td class="p-3 text-gray-600 font-medium">${dateStr}</td>
+        <td class="p-3">
+          <a href="${slipData.image}" target="_blank">
+            <img src="${slipData.image}" class="w-16 h-20 object-cover rounded-lg border border-slate-200 shadow-sm hover:scale-110 transition" />
+          </a>
+        </td>
+        <td class="p-3 text-gray-700 max-w-xs break-words">${slipData.message || '<span class="text-gray-300">- ไม่ระบุข้อความ -</span>'}</td>
+        <td class="p-3 text-center">
+          <button onclick="deleteSlip('${docId}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-xl transition text-xs">
+            🗑️ ลบคิว
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+  tableBody.innerHTML = html;
 });
 
 function renderTimeline(conditionsArray) {
@@ -318,12 +374,58 @@ function renderTimeline(conditionsArray) {
   container.innerHTML = html;
 }
 
-// 🎯 ฟังก์ชันล้างข้อมูลพังเวอร์ชันสมบูรณ์ (ใช้คำสั่ง set แทนการ update เพื่อล้างพิมพ์เขียวเก่าทิ้ง)
+// 📤 ฟังก์ชันฝั่งคนบริจาค: สำหรับส่งรูปภาพสลิปเข้าไปเก็บในคลาวด์คอลเลกชัน slips
+async function submitDonationSlip() {
+  const fileInput = document.getElementById("slipFileInput");
+  const msgInput = document.getElementById("slipMessageInput");
+  const submitBtn = document.getElementById("submitSlipBtn");
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    alert("❌ กรุณาเลือกไฟล์รูปภาพสลิปธนาคารก่อนกดส่งนะครับ");
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = "⏳ กำลังส่งข้อมูลสลิป...";
+
+  try {
+    const base64Image = await convertFileToBase64(fileInput.files[0]);
+    
+    // บันทึกลงคอลเลกชันย่อย slips ใน Firebase ทันที
+    await slipsCollectionRef.add({
+      image: base64Image,
+      message: msgInput.value.trim(),
+      timestamp: Date.now()
+    });
+
+    fileInput.value = "";
+    msgInput.value = "";
+    alert("💖 ส่งสลิปบริจาคและข้อความเรียบร้อยแล้ว ขอบคุณแทนน้องแมวด้วยนะครับ!");
+  } catch (error) {
+    alert("เกิดข้อผิดพลาดในการส่งสลิป: " + error.message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = "ส่งสลิป 💖";
+  }
+}
+
+// 🗑️ ฟังก์ชันลบคิวสลิปออกจากระบบหลังบ้าน (เมื่อตรวจสอบยอดเงินเสร็จแล้ว)
+async function deleteSlip(docId) {
+  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
+  if (confirm("คุณตรวจสอบยอดเงินและต้องการลบสลิปนี้ออกจากคิวใช่ไหม?")) {
+    try {
+      await slipsCollectionRef.doc(docId).delete();
+      alert("ลบรายการสลิปเรียบร้อยแล้วครับ");
+    } catch (error) {
+      alert("ไม่สามารถลบสลิปได้: " + error.message);
+    }
+  }
+}
+
 async function clearAllConditionsData() {
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
   if (confirm("🚨 ยืนยันการล้างระบบ: ระบบจะทำการ Reset โครงสร้างข้อมูลไทม์ไลน์ใหม่ทั้งหมดเพื่อแก้ไขปัญหากล่องเออร์เรอร์ ยืนยันไหมครับ?")) {
     try {
-      // ใช้คำสั่ง .set() เขียนข้อมูลลงไปใหม่ทั้งหมด โดยคงค่าการเงินเดิมไว้ แต่เคลียร์ conditions ให้สะอาดเอี่ยม
       await liveDataRef.set({
         donationOpen: donationOpen,
         totalDonation: currentDonationTotal,
@@ -331,7 +433,7 @@ async function clearAllConditionsData() {
         expenseDetail: currentExpenseDetailStr,
         conditions: []
       });
-      alert("🧹 ระบบทำการทำลายอาร์เรย์ตัวเก่าที่มีปัญหาเรียบร้อยแล้วครับ! ตอนนี้หน้าเว็บสะอาดพร้อมให้ใส่ข้อมูลใหม่แล้ว ลองบันทึกอาการดูได้เลยครับ");
+      alert("🧹 ระบบทำการทำลายอาร์เรย์ตัวเก่าที่มีปัญหาเรียบร้อยแล้วครับ!");
     } catch (error) {
       alert("เกิดข้อผิดพลาดในการ Reset: " + error.message);
     }
@@ -340,16 +442,11 @@ async function clearAllConditionsData() {
 
 async function deleteConditionLog(targetIndex) {
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
-  
   if (confirm("⚠️ คุณแน่ใจใช่ไหมว่าต้องการลบบันทึกอาการของวันนี้ทิ้งอย่างถาวร?")) {
     try {
       let updatedArray = [...currentConditionsArray];
       updatedArray.splice(targetIndex, 1);
-
-      await liveDataRef.update({
-        conditions: updatedArray
-      });
-
+      await liveDataRef.update({ conditions: updatedArray });
       alert("ลบข้อมูลบันทึกอาการเรียบร้อยแล้วครับ!");
     } catch (error) {
       alert("ไม่สามารถลบข้อมูลได้เนื่องจาก: " + error.message);
@@ -368,7 +465,6 @@ function handleAdminAuth() {
   } else {
     const userInput = prompt("👤 กรุณากรอก 'ชื่อผู้ใช้' (Username) :");
     if (userInput === null) return; 
-    
     const passInput = prompt("🔑 กรุณากรอก 'รหัสผ่าน' (Password) :");
     if (passInput === null) return; 
 
@@ -435,9 +531,7 @@ async function addNewConditionLog() {
     let updatedArray = [...currentConditionsArray];
     updatedArray.push(newLog);
 
-    await liveDataRef.update({
-      conditions: updatedArray
-    });
+    await liveDataRef.update({ conditions: updatedArray });
     
     document.getElementById("newLogDate").value = "";
     document.getElementById("newLogImagesInput").value = "";
