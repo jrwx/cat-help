@@ -90,9 +90,11 @@
       <div class="text-gray-500 text-lg">ยอดบริจาคทั้งหมด (รายรับ)</div>
       <div id="totalDonation" class="text-4xl font-bold mt-4 text-orange-500">0 บาท</div>
     </div>
-    <div class="bg-white rounded-3xl shadow-xl p-8 text-center">
-      <div class="text-5xl mb-4">🏥</div>
-      <div class="text-gray-500 text-lg">ค่ารักษาที่ใช้ไป (รายจ่าย)</div>
+    <div onclick="openExpenseModal()" class="bg-white rounded-3xl shadow-xl p-8 text-center cursor-pointer hover:scale-105 transition duration-300 transform border border-transparent hover:border-red-200 group">
+      <div class="text-5xl mb-4 group-hover:animate-bounce">🏥</div>
+      <div class="text-gray-500 text-lg flex items-center justify-center gap-1">
+        ค่ารักษาที่ใช้ไป (รายจ่าย) <span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">🔍 คลิกดู</span>
+      </div>
       <div id="totalExpense" class="text-4xl font-bold mt-4 text-red-500">0 บาท</div>
     </div>
     <div class="bg-white rounded-3xl shadow-xl p-8 text-center">
@@ -102,6 +104,40 @@
     </div>
   </div>
 </section>
+
+<div id="expenseModal" class="hidden fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeExpenseModal()">
+  <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden border border-red-100 transform transition duration-300 scale-100 flex flex-col max-h-[85vh]" onclick="event.stopPropagation()">
+    <div class="bg-red-500 p-6 flex justify-between items-center flex-none text-white">
+      <div>
+        <h3 class="text-2xl font-bold flex items-center gap-2">🏥 รายละเอียดค่ารักษา (รายจ่าย)</h3>
+        <p class="text-sm text-white/80 mt-1">รายการค่าใช้จ่าย ค่ายา และค่ารักษาพยาบาลทั้งหมดของน้อง</p>
+      </div>
+      <button onclick="closeExpenseModal()" class="bg-white/20 hover:bg-white/30 text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-lg transition">✕</button>
+    </div>
+    <div class="p-6 overflow-y-auto flex-1 custom-scrollbar">
+      <div class="overflow-x-auto border border-gray-100 rounded-2xl">
+        <table class="w-full text-left border-collapse bg-white">
+          <thead class="sticky top-0 bg-red-50 z-10 shadow-sm">
+            <tr class="text-red-800 text-base border-b border-red-200">
+              <th class="p-4 font-semibold">วันที่</th>
+              <th class="p-4 font-semibold">รายการรายละเอียด</th>
+              <th class="p-4 font-semibold text-center">หลักฐาน</th>
+              <th class="p-4 font-semibold text-right">จำนวนเงิน</th>
+            </tr>
+          </thead>
+          <tbody id="expenseModalTableBody" class="text-base divide-y divide-gray-100">
+            <tr>
+              <td colspan="4" class="p-4 text-center text-gray-400">กำลังโหลดรายการรายจ่าย...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="p-4 bg-gray-50 border-t border-gray-100 text-right flex-none">
+      <button onclick="closeExpenseModal()" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-6 py-2.5 rounded-xl transition shadow">ปิดหน้าต่าง</button>
+    </div>
+  </div>
+</div>
 
 <section id="ownerPanel" class="hidden max-w-6xl mx-auto px-5 py-12">
   <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-orange-100">
@@ -308,7 +344,7 @@
   </div>
 </section>
 
-<div id="imageModal" class="hidden fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeImageModal()">
+<div id="imageModal" class="hidden fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeImageModal()">
   <div class="relative max-w-2xl w-full flex flex-col items-center">
     <button class="absolute -top-12 right-0 text-white bg-red-500 hover:bg-red-600 rounded-full px-4 py-2 font-bold transition shadow-lg text-sm">
       ✕ ปิดหน้าต่าง
@@ -373,6 +409,52 @@ function openImageModal(docId) {
 function closeImageModal() {
   document.getElementById("imageModal").classList.add("hidden");
   document.getElementById("modalTargetImage").src = "";
+}
+
+/* [เพิ่มใหม่] ฟังก์ชันเปิด-ปิด หน้าต่างป๊อปอัปรายจ่าย */
+function openExpenseModal() {
+  renderExpenseModalTable();
+  document.getElementById("expenseModal").classList.remove("hidden");
+}
+
+function closeExpenseModal() {
+  document.getElementById("expenseModal").classList.add("hidden");
+}
+
+/* [เพิ่มใหม่] ฟังก์ชันกรองและวาดตารางรายจ่ายลงในป๊อปอัป */
+function renderExpenseModalTable() {
+  const tableBody = document.getElementById("expenseModalTableBody");
+  // กรองเอาเฉพาะประเภท expense (รายจ่าย)
+  const expenseItems = globalFinanceItems.filter(item => item.type === "expense");
+
+  if (expenseItems.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">ยังไม่มีรายการบันทึกรายจ่ายในขณะนี้</td></tr>`;
+    return;
+  }
+
+  let html = "";
+  expenseItems.forEach((item) => {
+    const amtStr = Number(item.amount || 0).toLocaleString() + " บาท";
+    
+    const receiptHtml = item.receiptImage
+      ? `<button onclick="openImageModal('finance_${item.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2.5 py-1 rounded-xl text-xs transition flex items-center gap-1 mx-auto">📸 ดูหลักฐาน</button>`
+      : `<span class="text-gray-300 text-xs">- ไม่มี -</span>`;
+
+    let detailDisplay = item.detail;
+    if (item.receiptImage && !detailDisplay.includes("[ ทางบ้าน ]")) {
+      detailDisplay = `<span class="inline-block bg-slate-600 text-white text-[11px] font-bold px-1.5 py-0.5 rounded mr-1.5 tracking-wide shadow-sm">[ ทางบ้าน ]</span> ` + detailDisplay;
+    }
+
+    html += `
+      <tr class="hover:bg-red-50/30 transition text-sm md:text-base">
+        <td class="p-4 font-medium text-gray-500 whitespace-nowrap">${item.date}</td>
+        <td class="p-4 text-gray-800 font-medium break-all align-middle">${detailDisplay}</td>
+        <td class="p-4 text-center align-middle">${receiptHtml}</td>
+        <td class="p-4 text-right text-red-500 font-bold align-middle">-${amtStr}</td>
+      </tr>
+    `;
+  });
+  tableBody.innerHTML = html;
 }
 
 liveDataRef.onSnapshot((doc) => {
@@ -465,6 +547,11 @@ financeCollectionRef.onSnapshot((snapshot) => {
 
   globalFinanceItems.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   renderFinanceTable();
+  
+  // อัปเดตข้อมูลตารางใน Modal แบบเรียลไทม์ด้วย (หากเปิดค้างไว้)
+  if (!document.getElementById("expenseModal").classList.contains("hidden")) {
+    renderExpenseModalTable();
+  }
 });
 
 async function deleteTransaction(itemId) {
