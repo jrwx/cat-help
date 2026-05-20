@@ -11,7 +11,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
   <style>
@@ -40,7 +39,7 @@
     </div>
     <button
       id="loginBtn"
-      onclick="handleAuthAction()"
+      onclick="handleAdminAuth()"
       class="bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold">
       🔐 Owner Login
     </button>
@@ -87,8 +86,8 @@
 <section id="ownerPanel" class="hidden max-w-6xl mx-auto px-5 py-12">
   <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-orange-100">
     <div class="bg-orange-500 text-white p-6">
-      <h2 class="text-3xl font-bold">🔐 Owner Dashboard</h2>
-      <p class="mt-2 text-white/80">ระบบจัดการข้อมูลหลังบ้านสำหรับผู้ดูแลเว็บ</p>
+      <h2 class="text-3xl font-bold">🛠️ แผงควบคุมผู้ดูแล</h2>
+      <p class="mt-2 text-white/80">ยินดีต้อนรับคุณผู้ดูแล สามารถปรับปรุงข้อมูลน้องแมวที่นี่ได้เลยครับ</p>
     </div>
     <div class="p-8 space-y-5">
       <div class="grid md:grid-cols-2 gap-5">
@@ -201,7 +200,7 @@
 </footer>
 
 <script>
-// CONFIG สำหรับเชื่อมต่อ Firebase
+// CONFIG ไลบรารีการเชื่อมต่อ Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDLL5PYwQ3aHxeA-PszAh2x3mJxTUDXdpY",
   authDomain: "cat-help-18ffb.firebaseapp.com",
@@ -212,41 +211,34 @@ const firebaseConfig = {
   measurementId: "G-LEB15WNE0X"
 };
 
-// เริ่มทำงานระบบ Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const liveDataRef = db.collection("cat_status").doc("live_data");
 
-// 🔑 รายชื่ออีเมลผู้ดูแลระบบ
-const allowedOwners = [
-  "j45phuarram@gmail.com",
-  "mhiwpharr@hotmail.com"
-];
+// 🔑 อัปเดต Username และ Password ตามที่คุณกำหนดไว้ครับ 
+const ADMIN_USER = "แมวน้อย";
+const ADMIN_PASS = "12345";
 
+let isOwnerLoggedIn = false;
 let donationOpen = true;
-let isUserLoggedIn = false; 
 
-// 1. ดึงข้อมูลแบบ Realtime จาก Firebase มารันหน้าเว็บ
+// 1. ดึงข้อมูลแบบ Realtime จากคลาวด์ Firebase มารันบนเว็บอินเทอร์เฟซ
 liveDataRef.onSnapshot((doc) => {
   if (doc.exists) {
     const data = doc.data();
     donationOpen = data.donationOpen;
     const balance = data.totalDonation - data.totalExpense;
 
-    // อัปเดตข้อมูลตัวเลขหน้าเว็บ
     document.getElementById("totalDonation").innerHTML = data.totalDonation.toLocaleString() + " บาท";
     document.getElementById("totalExpense").innerHTML = data.totalExpense.toLocaleString() + " บาท";
     document.getElementById("balanceAmount").innerHTML = balance.toLocaleString() + " บาท";
     document.getElementById("expenseList").innerText = data.expenseDetail;
 
-    // ดึงข้อมูลไปรอกล่องกรอกหลังบ้าน
     document.getElementById("donationInput").value = data.totalDonation;
     document.getElementById("expenseInput").value = data.totalExpense;
     document.getElementById("expenseDetail").value = data.expenseDetail;
 
-    // Render รายการอาการวันต่อวัน (Timeline)
     renderTimeline(data.conditions || []);
-
     updateDonationUI(donationOpen);
   }
 });
@@ -259,9 +251,7 @@ function renderTimeline(conditionsArray) {
     return;
   }
 
-  // เรียงลำดับให้อาการล่าสุดที่เพิ่งเพิ่มแสดงขึ้นก่อนด้านบนสุด
   const sortedLogs = [...conditionsArray].reverse();
-
   let html = "";
   sortedLogs.forEach((log) => {
     html += `
@@ -283,61 +273,40 @@ function renderTimeline(conditionsArray) {
   container.innerHTML = html;
 }
 
-// เช็คความปลอดภัยสิทธิ์เข้าใช้งานระบบผู้ดูแล
-function checkUserAccess(user) {
-  if(user){
-    const loggedInEmail = user.email.toLowerCase();
-    if(allowedOwners.includes(loggedInEmail)){
-      isUserLoggedIn = true;
-      document.getElementById("ownerPanel").classList.remove("hidden");
-      document.getElementById("loginBtn").innerHTML = "🚪 Logout"; 
-      document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
-    }else{
-      alert("คุณไม่มีสิทธิ์เข้าใช้งานระบบผู้ดูแล");
-      firebase.auth().signOut();
-    }
-  }
-}
-
-// ตรวจจับสถานะการล็อกอินปัจจุบันแบบเรียลไทม์ (ปรับใหม่ไม่ใช้ Redirect แล้ว)
-firebase.auth().onAuthStateChanged((user) => {
-  if (user) {
-    checkUserAccess(user);
-  } else {
-    isUserLoggedIn = false;
+// 🔐 ระบบยืนยันตัวตนผู้ดูแลแบบล็อกอิน (ซ่อนข้อมูลอย่างเด็ดขาดตามโจทย์)
+function handleAdminAuth() {
+  if (isOwnerLoggedIn) {
+    // ออกจากระบบ (Logout)
+    isOwnerLoggedIn = false;
     document.getElementById("ownerPanel").classList.add("hidden");
     document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
     document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
-  }
-});
-
-// ฟังก์ชันศูนย์กลางจัดการปุ่มกด ล็อกอิน/ล็อกเอาท์ (แก้ไขใหม่เพื่อแก้บั๊ก Initial State 🛠️)
-async function handleAuthAction() {
-  if (isUserLoggedIn) {
-    try {
-      await firebase.auth().signOut();
-      alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
-      location.reload(); 
-    } catch (error) {
-      alert("เกิดข้อผิดพลาดในการล็อกเอาท์: " + error.message);
-    }
+    alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
   } else {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    // บังคับให้บราวเซอร์เปิดหน้าเลือกบัญชีใหม่ทุกครั้ง เพื่อล้างค่าเออร์เรอร์เดิมที่ค้างอยู่
-    provider.setCustomParameters({ prompt: 'select_account' }); 
+    // เรียกกล่องป้อนข้อมูลทีละสเต็ป
+    const userInput = prompt("👤 กรุณากรอก 'ชื่อผู้ใช้' (Username) :");
+    if (userInput === null) return; 
     
-    try {
-      const result = await firebase.auth().signInWithPopup(provider);
-      checkUserAccess(result.user);
-    } catch (error) {
-      console.error(error);
-      alert("เข้าสู่ระบบไม่สำเร็จ: บราวเซอร์ของคุณอาจบล็อกการเก็บข้อมูลคุกกี้ ให้ลองเปิดเว็บนี้ด้วยโหมดไม่ระบุตัวตน (Incognito) หรือเปิดผ่านเซิร์ฟเวอร์จำลองจำพวก Live Server ครับ");
+    const passInput = prompt("🔑 กรุณากรอก 'รหัสผ่าน' (Password) :");
+    if (passInput === null) return; 
+
+    // ตรวจสอบความถูกต้องของ Username และ Password
+    if (userInput === ADMIN_USER && passInput === ADMIN_PASS) {
+      isOwnerLoggedIn = true;
+      document.getElementById("ownerPanel").classList.remove("hidden");
+      document.getElementById("loginBtn").innerHTML = "🚪 Logout (ผู้ดูแล)"; // แสดงคำว่าผู้ดูแลตามบรีฟ ไม่ระบุข้อมูลอื่น
+      document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
+      alert("🔓 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณผู้ดูแลระบบครับ");
+    } else {
+      alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง! ปฏิเสธการเข้าถึง");
     }
   }
 }
 
-// ฟังก์ชันเพิ่มอาการบันทึกประจำวันใหม่ลงฐานข้อมูล (Array Union)
+// ฟังก์ชันเพิ่มอาการบันทึกประจำวันใหม่ลงฐานข้อมูล
 async function addNewConditionLog() {
+  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
+  
   const dateVal = document.getElementById("newLogDate").value.trim();
   const imgVal = document.getElementById("newLogImage").value.trim();
   const contentVal = document.getElementById("newLogContent").value.trim();
@@ -370,6 +339,8 @@ async function addNewConditionLog() {
 
 // ฟังก์ชันบันทึกข้อมูลการเงินหลัก
 async function updateFinance(){
+  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
+
   const donation = Number(document.getElementById("donationInput").value);
   const expense = Number(document.getElementById("expenseInput").value);
   const detail = document.getElementById("expenseDetail").value;
@@ -386,7 +357,9 @@ async function updateFinance(){
   }
 }
 
+// ฟังก์ชันสลับเปิด-ปิดระบบรับบริจาค
 async function toggleDonation(){
+  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
   try {
     await liveDataRef.update({ donationOpen: !donationOpen });
   } catch (error) {
