@@ -90,16 +90,6 @@
       <p class="mt-2 text-white/80">ยินดีต้อนรับคุณผู้ดูแล สามารถปรับปรุงข้อมูลน้องแมวที่นี่ได้เลยครับ</p>
     </div>
     <div class="p-8 space-y-5">
-      
-      <div class="p-4 bg-red-50 border border-red-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div>
-          <h5 class="font-bold text-red-600">🧹 ปุ่มล้างระบบไทม์ไลน์ที่พัง</h5>
-          <p class="text-xs text-gray-500">กดปุ่มนี้หากต้องการเคลียร์หรือล้างโครงสร้างไทม์ไลน์เก่าที่ล็อกเออร์เรอร์ออกไปครับ</p>
-        </div>
-        <button onclick="clearAllConditionsData()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow">
-          ล้างไทม์ไลน์เก่าทั้งหมด
-        </button>
-      </div>
 
       <div class="grid md:grid-cols-2 gap-5">
         <div>
@@ -132,7 +122,7 @@
           <label class="text-sm font-semibold block mb-1">รายละเอียดอาการของวันนี้น้องแมว</label>
           <textarea id="newLogContent" rows="2" placeholder="วันนี้น้องเริ่มกินอาหารได้เองแล้ว..." class="w-full p-3 rounded-xl border border-orange-200 bg-white"></textarea>
         </div>
-        <button onclick="addNewConditionLog()" class="w-full bg-emerald-500 hover:bg-emerald-600 transition text-white py-3 rounded-xl font-semibold text-sm shadow">
+        <button id="addLogBtn" onclick="addNewConditionLog()" class="w-full bg-emerald-500 hover:bg-emerald-600 transition text-white py-3 rounded-xl font-semibold text-sm shadow">
           ✨ เพิ่มบันทึกวันนี้น้องลงไทม์ไลน์
         </button>
       </div>
@@ -245,20 +235,17 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const liveDataRef = db.collection("cat_status").doc("live_data");
-const slipsCollectionRef = db.collection("slips"); // คอลเลกชันใหม่สำหรับสลิป
-
-const ADMIN_USER = "แมวน้อย";
-const ADMIN_PASS = "12345";
+const slipsCollectionRef = db.collection("slips");
+const logsCollectionRef = db.collection("daily_logs"); // คอลเลกชันใหม่เพื่อแก้บั๊กเรื่องอาร์เรย์พังอย่างถาวร
 
 let isOwnerLoggedIn = false;
 let donationOpen = true;
-let currentConditionsArray = []; 
 
 let currentDonationTotal = 0;
 let currentExpenseTotal = 0;
 let currentExpenseDetailStr = "";
 
-// ดึงข้อมูลหลักและไทม์ไลน์
+// 1. ดึงข้อมูลสรุปการเงินหลัก
 liveDataRef.onSnapshot((doc) => {
   if (doc.exists) {
     const data = doc.data();
@@ -279,13 +266,16 @@ liveDataRef.onSnapshot((doc) => {
     document.getElementById("expenseInput").value = currentExpenseTotal;
     document.getElementById("expenseDetail").value = currentExpenseDetailStr;
 
-    currentConditionsArray = Array.isArray(data.conditions) ? data.conditions : [];
-    renderTimeline(currentConditionsArray);
     updateDonationUI(donationOpen);
   }
 });
 
-// ดึงข้อมูลสลิปแบบ Realtime (จะดึงมาอัปเดตใส่ตารางเมื่อมีการส่งเข้ามา)
+// 2. ดึงข้อมูลบันทึกอาการวันต่อวันจากคอลเลกชันใหม่แบบ Realtime (เรียงวันที่ล่าสุดขึ้นก่อน)
+logsCollectionRef.orderBy("logTimestamp", "desc").onSnapshot((snapshot) => {
+  renderTimelineFromSnapshot(snapshot);
+});
+
+// 3. ดึงข้อมูลคิวสลิปบริจาคแบบ Realtime
 slipsCollectionRef.orderBy("timestamp", "desc").onSnapshot((snapshot) => {
   const tableBody = document.getElementById("slipTableBody");
   if (snapshot.empty) {
@@ -319,18 +309,17 @@ slipsCollectionRef.orderBy("timestamp", "desc").onSnapshot((snapshot) => {
   tableBody.innerHTML = html;
 });
 
-function renderTimeline(conditionsArray) {
+function renderTimelineFromSnapshot(snapshot) {
   const container = document.getElementById("timelineContainer");
-  if (!conditionsArray || conditionsArray.length === 0) {
+  if (snapshot.empty) {
     container.innerHTML = `<p class="text-gray-400 text-center py-4">ยังไม่มีข้อมูลการอัปเดตอาการ</p>`;
     return;
   }
 
-  const logsWithIndex = conditionsArray.map((log, index) => ({ ...log, originalIndex: index }));
-  const sortedLogs = logsWithIndex.reverse();
-  
   let html = "";
-  sortedLogs.forEach((log) => {
+  snapshot.forEach((doc) => {
+    const log = doc.data();
+    const logId = doc.id;
     let imagesHtml = "";
     
     if (log.imagesJoined && typeof log.imagesJoined === 'string') {
@@ -347,17 +336,10 @@ function renderTimeline(conditionsArray) {
         }
       });
       imagesHtml += `</div>`;
-    } else if (log.image) {
-      imagesHtml = `
-        <div class="overflow-hidden rounded-xl border border-orange-200 bg-white mt-2">
-          <a href="${log.image}" target="_blank">
-            <img src="${log.image}" class="w-full max-h-64 object-cover hover:scale-105 transition duration-300" onerror="this.src='https://placehold.co/600x400?text=รูปภาพไม่ถูกต้อง'"/>
-          </a>
-        </div>`;
     }
 
     const deleteBtnHtml = isOwnerLoggedIn 
-      ? `<button onclick="deleteConditionLog(${log.originalIndex})" class="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-full transition">❌ ลบส่วนนี้</button>` 
+      ? `<button onclick="deleteConditionLog('${logId}')" class="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-full transition">❌ ลบส่วนนี้</button>` 
       : "";
 
     html += `
@@ -374,7 +356,80 @@ function renderTimeline(conditionsArray) {
   container.innerHTML = html;
 }
 
-// 📤 ฟังก์ชันฝั่งคนบริจาค: สำหรับส่งรูปภาพสลิปเข้าไปเก็บในคลาวด์คอลเลกชัน slips
+// ➕ ฟังก์ชันเพิ่มบันทึกอาการประจำวัน (อัปเกรดเป็นเซฟแยกชิ้นลงคอลเลกชัน บั๊กหายแน่นอน 100%)
+async function addNewConditionLog() {
+  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
+  
+  const rawDateVal = document.getElementById("newLogDate").value;
+  const filesInput = document.getElementById("newLogImagesInput");
+  const contentVal = document.getElementById("newLogContent").value.trim();
+  const addLogBtn = document.getElementById("addLogBtn");
+
+  if (!rawDateVal || !contentVal) {
+    alert("กรุณาเลือกวันที่จากปฏิทินและกรอกรายละเอียดอาการของน้องแมวด้วยครับ");
+    return;
+  }
+
+  addLogBtn.disabled = true;
+  addLogBtn.innerHTML = "⏳ กำลังบันทึกข้อมูลอาการลงไทม์ไลน์...";
+
+  const dateObj = new Date(rawDateVal);
+  const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+  const formattedThaiDate = `${dateObj.getDate()} ${thaiMonths[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
+
+  let imagesJoinedString = "";
+  if (filesInput.files && filesInput.files.length > 0) {
+    try {
+      let base64List = [];
+      for (let i = 0; i < filesInput.files.length; i++) {
+        const base64Str = await convertFileToBase64(filesInput.files[i]);
+        base64List.push(base64Str);
+      }
+      imagesJoinedString = base64List.join("||"); 
+    } catch (e) {
+      alert("เกิดข้อผิดพลาดในการประมวลผลไฟล์ภาพของคุณ");
+      addLogBtn.disabled = false;
+      addLogBtn.innerHTML = "✨ เพิ่มบันทึกวันนี้น้องลงไทม์ไลน์";
+      return;
+    }
+  }
+
+  try {
+    // เซฟแยกเป็นเอกสารแผ่นใหม่เข้าไปในคอลเลกชัน daily_logs ทันที
+    await logsCollectionRef.add({
+      date: formattedThaiDate,
+      imagesJoined: imagesJoinedString !== "" ? imagesJoinedString : null,
+      content: contentVal,
+      logTimestamp: dateObj.getTime() // ใช้ตั้งค่าเวลาสำหรับเรียงลำดับจากปฏิทิน
+    });
+    
+    document.getElementById("newLogDate").value = "";
+    document.getElementById("newLogImagesInput").value = "";
+    document.getElementById("newLogContent").value = "";
+    
+    alert("เพิ่มข้อมูลอาการประจำวันลงไทม์ไลน์เรียบร้อยแล้ว! 🎉");
+  } catch (error) {
+    alert("ไม่สามารถเพิ่มข้อมูลอาการได้เนื่องจาก: " + error.message);
+  } finally {
+    addLogBtn.disabled = false;
+    addLogBtn.innerHTML = "✨ เพิ่มบันทึกวันนี้น้องลงไทม์ไลน์";
+  }
+}
+
+// ❌ ฟังก์ชันลบบันทึกอาการ (ปรับปรุงให้สั่งลบเอกสารตาม ID ในคอลเลกชันย่อย)
+async function deleteConditionLog(logId) {
+  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
+  if (confirm("⚠️ คุณแน่ใจใช่ไหมว่าต้องการลบบันทึกอาการของวันนี้ทิ้งอย่างถาวร?")) {
+    try {
+      await logsCollectionRef.doc(logId).delete();
+      alert("ลบข้อมูลบันทึกอาการเรียบร้อยแล้วครับ!");
+    } catch (error) {
+      alert("ไม่สามารถลบข้อมูลได้เนื่องจาก: " + error.message);
+    }
+  }
+}
+
+// 📤 ฟังก์ชันฝั่งคนบริจาค: ส่งรูปภาพสลิป
 async function submitDonationSlip() {
   const fileInput = document.getElementById("slipFileInput");
   const msgInput = document.getElementById("slipMessageInput");
@@ -391,7 +446,6 @@ async function submitDonationSlip() {
   try {
     const base64Image = await convertFileToBase64(fileInput.files[0]);
     
-    // บันทึกลงคอลเลกชันย่อย slips ใน Firebase ทันที
     await slipsCollectionRef.add({
       image: base64Image,
       message: msgInput.value.trim(),
@@ -409,7 +463,7 @@ async function submitDonationSlip() {
   }
 }
 
-// 🗑️ ฟังก์ชันลบคิวสลิปออกจากระบบหลังบ้าน (เมื่อตรวจสอบยอดเงินเสร็จแล้ว)
+// 🗑️ ฟังก์ชันลบคิวสลิปออกจากระบบหลังบ้าน
 async function deleteSlip(docId) {
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
   if (confirm("คุณตรวจสอบยอดเงินและต้องการลบสลิปนี้ออกจากคิวใช่ไหม?")) {
@@ -422,45 +476,12 @@ async function deleteSlip(docId) {
   }
 }
 
-async function clearAllConditionsData() {
-  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
-  if (confirm("🚨 ยืนยันการล้างระบบ: ระบบจะทำการ Reset โครงสร้างข้อมูลไทม์ไลน์ใหม่ทั้งหมดเพื่อแก้ไขปัญหากล่องเออร์เรอร์ ยืนยันไหมครับ?")) {
-    try {
-      await liveDataRef.set({
-        donationOpen: donationOpen,
-        totalDonation: currentDonationTotal,
-        totalExpense: currentExpenseTotal,
-        expenseDetail: currentExpenseDetailStr,
-        conditions: []
-      });
-      alert("🧹 ระบบทำการทำลายอาร์เรย์ตัวเก่าที่มีปัญหาเรียบร้อยแล้วครับ!");
-    } catch (error) {
-      alert("เกิดข้อผิดพลาดในการ Reset: " + error.message);
-    }
-  }
-}
-
-async function deleteConditionLog(targetIndex) {
-  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
-  if (confirm("⚠️ คุณแน่ใจใช่ไหมว่าต้องการลบบันทึกอาการของวันนี้ทิ้งอย่างถาวร?")) {
-    try {
-      let updatedArray = [...currentConditionsArray];
-      updatedArray.splice(targetIndex, 1);
-      await liveDataRef.update({ conditions: updatedArray });
-      alert("ลบข้อมูลบันทึกอาการเรียบร้อยแล้วครับ!");
-    } catch (error) {
-      alert("ไม่สามารถลบข้อมูลได้เนื่องจาก: " + error.message);
-    }
-  }
-}
-
 function handleAdminAuth() {
   if (isOwnerLoggedIn) {
     isOwnerLoggedIn = false;
     document.getElementById("ownerPanel").classList.add("hidden");
     document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
     document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
-    renderTimeline(currentConditionsArray);
     alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
   } else {
     const userInput = prompt("👤 กรุณากรอก 'ชื่อผู้ใช้' (Username) :");
@@ -473,7 +494,6 @@ function handleAdminAuth() {
       document.getElementById("ownerPanel").classList.remove("hidden");
       document.getElementById("loginBtn").innerHTML = "🚪 Logout (ผู้ดูแล)";
       document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
-      renderTimeline(currentConditionsArray);
       alert("🔓 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณผู้ดูแลระบบครับ");
     } else {
       alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง! ปฏิเสธการเข้าถึง");
@@ -488,59 +508,6 @@ function convertFileToBase64(file) {
     reader.onload = () => resolve(reader.result);
     reader.onerror = (error) => reject(error);
   });
-}
-
-async function addNewConditionLog() {
-  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
-  
-  const rawDateVal = document.getElementById("newLogDate").value;
-  const filesInput = document.getElementById("newLogImagesInput");
-  const contentVal = document.getElementById("newLogContent").value.trim();
-
-  if (!rawDateVal || !contentVal) {
-    alert("กรุณาเลือกวันที่จากปฏิทินและกรอกรายละเอียดอาการของน้องแมวด้วยครับ");
-    return;
-  }
-
-  const dateObj = new Date(rawDateVal);
-  const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-  const formattedThaiDate = `${dateObj.getDate()} ${thaiMonths[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
-
-  let imagesJoinedString = "";
-  if (filesInput.files && filesInput.files.length > 0) {
-    try {
-      let base64List = [];
-      for (let i = 0; i < filesInput.files.length; i++) {
-        const base64Str = await convertFileToBase64(filesInput.files[i]);
-        base64List.push(base64Str);
-      }
-      imagesJoinedString = base64List.join("||"); 
-    } catch (e) {
-      alert("เกิดข้อผิดพลาดในการประมวลผลไฟล์ภาพของคุณ");
-      return;
-    }
-  }
-
-  const newLog = {
-    date: formattedThaiDate,
-    imagesJoined: imagesJoinedString !== "" ? imagesJoinedString : null,
-    content: contentVal
-  };
-
-  try {
-    let updatedArray = [...currentConditionsArray];
-    updatedArray.push(newLog);
-
-    await liveDataRef.update({ conditions: updatedArray });
-    
-    document.getElementById("newLogDate").value = "";
-    document.getElementById("newLogImagesInput").value = "";
-    document.getElementById("newLogContent").value = "";
-    
-    alert("เพิ่มข้อมูลอาการประจำวันลงไทม์ไลน์เรียบร้อยแล้ว! 🎉");
-  } catch (error) {
-    alert("ไม่สามารถเพิ่มข้อมูลอาการได้: " + error.message);
-  }
 }
 
 async function updateFinance(){
