@@ -4,16 +4,28 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ช่วยน้องแมวจร 🐱</title>
+
   <script src="https://cdn.tailwindcss.com"></script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
   <style>
-    body{ font-family:'Prompt',sans-serif; background:#fffaf7; color:#333; }
-    .glass{ background:rgba(255,255,255,.75); backdrop-filter:blur(12px); }
+    body{
+      font-family:'Prompt',sans-serif;
+      background:#fffaf7;
+      color:#333;
+    }
+    .glass{
+      background:rgba(255,255,255,.75);
+      backdrop-filter:blur(12px);
+    }
   </style>
 </head>
+
 <body>
 
 <nav class="fixed top-0 left-0 right-0 z-50 glass border-b border-orange-100">
@@ -25,7 +37,10 @@
         <div class="text-sm text-gray-500">อัปเดตการรักษาน้องแมว</div>
       </div>
     </div>
-    <button id="loginBtn" onclick="handleAdminAuth()" class="bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold">
+    <button
+      id="loginBtn"
+      onclick="handleAdminAuth()"
+      class="bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold">
       🔐 Owner Login
     </button>
   </div>
@@ -38,8 +53,12 @@
     <div class="text-center text-white max-w-4xl">
       <div class="text-7xl mb-5">🐾</div>
       <h1 class="text-5xl md:text-7xl font-bold leading-tight">ช่วยน้องแมวจร</h1>
-      <p class="mt-6 text-lg md:text-2xl text-white/90 leading-relaxed">อัปเดตค่ารักษา อาการล่าสุด และรายรับรายจ่ายของน้องแมว</p>
-      <div id="statusBox" class="mt-8 inline-flex items-center gap-3 bg-green-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl">💖 เปิดรับบริจาคอยู่</div>
+      <p class="mt-6 text-lg md:text-2xl text-white/90 leading-relaxed">
+        อัปเดตค่ารักษา อาการล่าสุด และรายรับรายจ่ายของน้องแมว
+      </p>
+      <div id="statusBox" class="mt-8 inline-flex items-center gap-3 bg-green-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl">
+        💖 เปิดรับบริจาคอยู่
+      </div>
     </div>
   </div>
 </section>
@@ -48,12 +67,12 @@
   <div class="grid md:grid-cols-3 gap-6">
     <div class="bg-white rounded-3xl shadow-xl p-8 text-center">
       <div class="text-5xl mb-4">💰</div>
-      <div class="text-gray-500 text-lg">ยอดบริจาคทั้งหมด</div>
+      <div class="text-gray-500 text-lg">ยอดบริจาคทั้งหมด (รายรับ)</div>
       <div id="totalDonation" class="text-4xl font-bold mt-4 text-orange-500">0 บาท</div>
     </div>
     <div class="bg-white rounded-3xl shadow-xl p-8 text-center">
       <div class="text-5xl mb-4">🏥</div>
-      <div class="text-gray-500 text-lg">ค่ารักษาที่ใช้ไป</div>
+      <div class="text-gray-500 text-lg">ค่ารักษาที่ใช้ไป (รายจ่าย)</div>
       <div id="totalExpense" class="text-4xl font-bold mt-4 text-red-500">0 บาท</div>
     </div>
     <div class="bg-white rounded-3xl shadow-xl p-8 text-center">
@@ -68,33 +87,216 @@
   <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-orange-100">
     <div class="bg-orange-500 text-white p-6">
       <h2 class="text-3xl font-bold">🛠️ แผงควบคุมผู้ดูแล</h2>
+      <p class="mt-2 text-white/80">ยินดีต้อนรับคุณผู้ดูแล สามารถจัดการบันทึกรายรับ-รายจ่าย และอาการประจำวันได้ที่นี่ครับ</p>
     </div>
     <div class="p-8 space-y-6">
-      <div class="p-5 bg-orange-50/50 rounded-2xl border border-orange-100 space-y-4">
-        <h4 class="font-bold text-orange-600 text-lg">➕ เพิ่มบันทึกอาการประจำวัน</h4>
+
+      <div class="p-5 bg-emerald-50/50 rounded-2xl border border-emerald-100 space-y-4">
+        <h4 class="font-bold text-emerald-700 text-lg">💵 เพิ่มบันทึก บัญชีรายรับ - รายจ่าย (คำนวณยอดอัตโนมัติ)</h4>
+        <div class="grid md:grid-cols-3 gap-4">
+          <div>
+            <label class="text-sm font-semibold block mb-1">📅 วันที่ทำรายการ</label>
+            <input id="transDate" type="date" class="w-full p-3 rounded-xl border border-emerald-200 bg-white" />
+          </div>
+          <div>
+            <label class="text-sm font-semibold block mb-1">📊 ประเภทรายการ</label>
+            <select id="transType" class="w-full p-3 rounded-xl border border-emerald-200 bg-white font-medium">
+              <option value="income" class="text-green-600">💰 รายรับ (ยอดเงินบริจาคเข้า)</option>
+              <option value="expense" class="text-red-600">🏥 รายจ่าย (ค่ารักษา/ค่ายา/ค่าของ)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm font-semibold block mb-1">🪙 จำนวนเงิน (บาท)</label>
+            <input id="transAmount" type="number" placeholder="0" class="w-full p-3 rounded-xl border border-emerald-200 bg-white" />
+          </div>
+        </div>
         <div class="grid md:grid-cols-2 gap-4">
           <div>
-            <label class="text-sm font-semibold block mb-1">📅 วันที่</label>
+            <label class="text-sm font-semibold block mb-1">📝 รายละเอียดของรายการเงิน</label>
+            <input id="transDetail" type="text" placeholder="ตัวอย่างเช่น: คุณสมชายร่วมบริจาค, ค่าเจาะเลือดตรวจแล็บ" class="w-full p-3 rounded-xl border border-emerald-200 bg-white" />
+          </div>
+          <div>
+            <label class="text-sm font-semibold block mb-1">🖼️ แนบสลิปหรือใบเสร็จหลักฐาน (ถ้ามี)</label>
+            <input id="transReceiptInput" type="file" accept="image/*" class="w-full p-2.5 rounded-xl border border-emerald-200 bg-white text-sm" />
+          </div>
+        </div>
+        <button id="addTransBtn" onclick="addNewTransaction()" class="w-full bg-emerald-600 hover:bg-emerald-700 transition text-white py-3 rounded-xl font-semibold text-sm shadow">
+          ✨ บันทึกรายการเงินนี้เข้าระบบบัญชีวันต่อวัน
+        </button>
+      </div>
+      
+      <div class="p-5 bg-orange-50/50 rounded-2xl border border-orange-100 space-y-4">
+        <h4 class="font-bold text-orange-600 text-lg">➕ เพิ่มบันทึกอาการประจำวันน้องแมว</h4>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-semibold block mb-1">📅 เลือกวันที่อัปเดต</label>
             <input id="newLogDate" type="date" class="w-full p-3 rounded-xl border border-orange-200 bg-white" />
           </div>
           <div>
-            <label class="text-sm font-semibold block mb-1">🖼️ เลือกรูป (แนะนำไม่เกิน 3-4 รูป)</label>
+            <label class="text-sm font-semibold block mb-1">🖼️ เลือกภาพน้องแมวจากในเครื่อง (เลือกได้หลายรูป)</label>
             <input id="newLogImagesInput" type="file" accept="image/*" multiple class="w-full p-2 rounded-xl border border-orange-200 bg-white text-sm" />
           </div>
         </div>
-        <textarea id="newLogContent" rows="2" placeholder="รายละเอียดอาการ..." class="w-full p-3 rounded-xl border border-orange-200 bg-white"></textarea>
-        <button id="addLogBtn" onclick="addNewConditionLog()" class="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-semibold">✨ บันทึกอาการ</button>
+        <div>
+          <label class="text-sm font-semibold block mb-1">รายละเอียดอาการของวันนี้น้องแมว</label>
+          <textarea id="newLogContent" rows="2" placeholder="วันนี้น้องเริ่มกินอาหารได้เองแล้ว..." class="w-full p-3 rounded-xl border border-orange-200 bg-white"></textarea>
+        </div>
+        <button id="addLogBtn" onclick="addNewConditionLog()" class="w-full bg-orange-500 hover:bg-orange-600 transition text-white py-3 rounded-xl font-semibold text-sm shadow">
+          ✨ เพิ่มบันทึกวันนี้น้องลงไทม์ไลน์อาการ
+        </button>
+      </div>
+
+      <div class="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+        <h4 class="font-bold text-slate-700 text-lg">📋 รายการสลิปบริจาคที่ส่งเข้ามา (เก็บประวัติที่เดิม)</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse bg-white rounded-xl overflow-hidden shadow-sm">
+            <thead>
+              <tr class="bg-slate-200 text-slate-700 text-sm">
+                <th class="p-3 font-semibold">วัน-เวลาที่ส่ง</th>
+                <th class="p-3 font-semibold">ชื่อผู้บริจาค</th>
+                <th class="p-3 font-semibold">จำนวนเงิน</th>
+                <th class="p-3 font-semibold">รูปภาพสลิป</th>
+                <th class="p-3 font-semibold">ข้อความให้กำลังใจ</th>
+                <th class="p-3 font-semibold text-center">จัดการคิว</th>
+              </tr>
+            </thead>
+            <tbody id="slipTableBody" class="text-sm divide-y divide-slate-100">
+              <tr>
+                <td colspan="6" class="p-4 text-center text-gray-400">ยังไม่มีสลิปส่งเข้ามา หรือ กำลังโหลดข้อมูล...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <button id="toggleBtn" onclick="toggleDonation()" class="w-full bg-red-500 hover:bg-red-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
+        🔴 ปิดรับบริจาคชั่วคราว
+      </button>
+    </div>
+  </div>
+</section>
+
+<section id="donationSection" class="max-w-6xl mx-auto px-5 py-10">
+  <div class="grid md:grid-cols-2 gap-8 items-start">
+    <div id="qrBox" class="bg-white rounded-3xl shadow-xl overflow-hidden md:sticky md:top-24 border border-orange-100">
+      <div class="bg-orange-500 text-white p-6">
+        <h2 class="text-3xl font-bold">💳 ช่องทางการโอนบริจาค</h2>
+      </div>
+      <div class="p-8 space-y-6 text-center">
+        <div class="w-20 h-20 bg-purple-600 rounded-2xl mx-auto flex items-center justify-center text-white text-3xl font-bold shadow-md">
+          SCB
+        </div>
+        <div class="space-y-4">
+          <div>
+            <div class="text-gray-400 font-semibold text-sm tracking-wide uppercase">ธนาคาร</div>
+            <div class="text-xl font-bold text-gray-700 mt-0.5">ไทยพาณิชย์ (SCB)</div>
+          </div>
+          <hr class="border-gray-100 max-w-[150px] mx-auto">
+          <div>
+            <div class="text-gray-400 font-semibold text-sm tracking-wide">เลขที่บัญชี</div>
+            <div class="text-3xl font-extrabold mt-1 text-purple-700 tracking-wider">408-888445-6</div>
+          </div>
+          <hr class="border-gray-100 max-w-[150px] mx-auto">
+          <div>
+            <div class="text-gray-400 font-semibold text-sm tracking-wide">ชื่อบัญชี</div>
+            <div class="text-xl font-bold text-gray-800 mt-1">กุลปริยา ฐานบำรุงรักษ์</div>
+          </div>
+        </div>
+        <p class="text-xs text-red-400 mt-4 bg-red-50 py-2 px-4 rounded-xl inline-block">
+          ⚠️ โอนแล้วรบกวนแนบหลักฐานสลิปด้านล่าง เพื่ออัปเดตสมุดบัญชีน้องแมวครับ
+        </p>
+      </div>
+    </div>
+    
+    <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
+      <div class="bg-orange-50 p-6">
+        <h2 class="text-3xl font-bold">🏥 บันทึกอาการวันต่อวัน</h2>
+      </div>
+      <div id="timelineContainer" class="p-8 space-y-6 max-h-[600px] overflow-y-auto">
+        <p class="text-gray-400 text-center">กำลังโหลดข้อมูลไทม์ไลน์...</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="max-w-6xl mx-auto px-5 py-10">
+<section class="max-w-6xl mx-auto px-5 pb-16">
   <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
-    <div class="bg-orange-50 p-6"><h2 class="text-3xl font-bold">🏥 บันทึกอาการวันต่อวัน</h2></div>
-    <div id="timelineContainer" class="p-8 space-y-6"></div>
+    <div class="bg-orange-50 p-6">
+      <h2 class="text-3xl font-bold">📊 บันทึกรายรับ - รายจ่ายค่ารักษา (อัปเดตวันต่อวัน)</h2>
+    </div>
+    <div class="p-8">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse bg-white rounded-xl overflow-hidden">
+          <thead>
+            <tr class="bg-orange-100 text-orange-800 text-base border-b border-orange-200">
+              <th class="p-4 font-semibold">วันที่</th>
+              <th class="p-4 font-semibold">รายการรายละเอียด</th>
+              <th class="p-4 font-semibold text-center">หลักฐาน</th>
+              <th class="p-4 font-semibold text-right">รายรับ (+)</th>
+              <th class="p-4 font-semibold text-right">รายจ่าย (-)</th>
+              <th class="p-4 font-semibold text-center">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="financeTableBody" class="text-base divide-y divide-gray-100">
+            <tr>
+              <td colspan="6" class="p-4 text-center text-gray-400">กำลังโหลดสมุดบัญชีรายรับ-รายจ่าย...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </section>
+
+<section id="slipSection" class="pb-20">
+  <div class="max-w-3xl mx-auto px-5">
+    <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
+      <div class="bg-orange-500 text-white p-6 text-center">
+        <h2 class="text-3xl font-bold">📤 แนบสลิปบริจาค</h2>
+      </div>
+      <div class="p-8 space-y-5">
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-semibold text-gray-600 block mb-1">👤 ระบุชื่อของคุณผู้ใจดี (ไม่บังคับ)</label>
+            <input id="slipDonorNameInput" type="text" placeholder="เช่น คุณสมชาย / ผู้ไม่ประสงค์ออกนาม" class="w-full p-4 rounded-2xl border border-orange-200 font-medium" />
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-gray-600 block mb-1">🪙 ระบุจำนวนเงินที่โอนร่วมบริจาค (บาท) *</label>
+            <input id="slipAmountInput" type="number" placeholder="ตัวอย่างเช่น: 100" class="w-full p-4 rounded-2xl border border-orange-200 font-medium text-lg" />
+          </div>
+        </div>
+        <div>
+          <label class="text-sm font-semibold text-gray-600 block mb-1">🖼️ เลือกไฟล์รูปภาพสลิป *</label>
+          <input id="slipFileInput" type="file" accept="image/*" class="w-full p-4 rounded-2xl border border-orange-200 text-sm" />
+        </div>
+        <div>
+          <label class="text-sm font-semibold text-gray-600 block mb-1">💬 ข้อความให้กำลังใจน้อง (ไม่บังคับ)</label>
+          <textarea id="slipMessageInput" rows="3" placeholder="ขอให้น้องหายไวๆ นะลูก..." class="w-full p-4 rounded-2xl border border-orange-200"></textarea>
+        </div>
+        <button id="submitSlipBtn" onclick="submitDonationSlip()" class="w-full bg-orange-500 hover:bg-orange-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg">
+          ส่งสลิปเพื่อร่วมช่วยน้อง 💖
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="imageModal" class="hidden fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeImageModal()">
+  <div class="relative max-w-2xl w-full flex flex-col items-center">
+    <button class="absolute -top-12 right-0 text-white bg-red-500 hover:bg-red-600 rounded-full px-4 py-2 font-bold transition shadow-lg text-sm">
+      ✕ ปิดหน้าต่าง
+    </button>
+    <img id="modalTargetImage" src="" class="max-h-[80vh] w-auto object-contain rounded-2xl shadow-2xl border border-white/20" onclick="event.stopPropagation()" />
+  </div>
+</div>
+
+<footer class="bg-orange-500 text-white py-10">
+  <div class="max-w-5xl mx-auto px-5 text-center">
+    <div class="text-5xl mb-3">🐾</div>
+    <h3 class="text-3xl font-bold">ขอบคุณทุกคนที่ช่วยน้องแมวจร</h3>
+    <p class="mt-3 text-white/80">ทุกการช่วยเหลือมีความหมายกับน้องมากจริง ๆ</p>
+  </div>
+</footer>
 
 <script>
 const firebaseConfig = {
@@ -103,16 +305,320 @@ const firebaseConfig = {
   projectId: "cat-help-18ffb",
   storageBucket: "cat-help-18ffb.firebasestorage.app",
   messagingSenderId: "545008804888",
-  appId: "1:545008804888:web:97d6c2c6dd228db8138f6d"
+  appId: "1:545008804888:web:97d6c2c6dd228db8138f6d",
+  measurementId: "G-LEB15WNE0X"
 };
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const liveDataRef = db.collection("cat_status").doc("live_data");
+const slipsCollectionRef = db.collection("slips");
 const logsCollectionRef = db.collection("daily_logs");
-let isOwnerLoggedIn = false;
+const financeCollectionRef = db.collection("finance_ledgers");
 
-// ฟังก์ชันบีบอัดรูป
+let isOwnerLoggedIn = false;
+let donationOpen = true;
+let currentSlipDataMap = {}; 
+
+function openImageModal(docId) {
+  const base64Data = currentSlipDataMap[docId];
+  if (base64Data) {
+    document.getElementById("modalTargetImage").src = base64Data;
+    document.getElementById("imageModal").classList.remove("hidden");
+  } else {
+    alert("ไม่สามารถดึงข้อมูลรูปภาพได้");
+  }
+}
+
+function closeImageModal() {
+  document.getElementById("imageModal").classList.add("hidden");
+  document.getElementById("modalTargetImage").src = "";
+}
+
+// 1. ดึงสถานะเปิด-ปิดรับบริจาคหลัก
+liveDataRef.onSnapshot((doc) => {
+  if (doc.exists) {
+    const data = doc.data();
+    donationOpen = data.donationOpen;
+    updateDonationUI(donationOpen);
+  }
+});
+
+// 2. ดึงข้อมูลรายรับ-รายจ่ายวันต่อวันแบบ Realtime + คำนวณยอดอัตโนมัติ
+financeCollectionRef.onSnapshot((snapshot) => {
+  const tableBody = document.getElementById("financeTableBody");
+  
+  let totalIn = 0;
+  let totalOut = 0;
+  const items = [];
+
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+    items.push({ id: doc.id, ...data });
+    
+    if (data.type === "income") {
+      totalIn += Number(data.amount || 0);
+    } else if (data.type === "expense") {
+      totalOut += Number(data.amount || 0);
+    }
+    
+    if (data.receiptImage) {
+      currentSlipDataMap[`finance_${doc.id}`] = data.receiptImage;
+    }
+  });
+
+  // คำนวณยอดคงเหลือใหม่แบบ Realtime
+  const balance = totalIn - totalOut;
+  document.getElementById("totalDonation").innerHTML = totalIn.toLocaleString() + " บาท";
+  document.getElementById("totalExpense").innerHTML = totalOut.toLocaleString() + " บาท";
+  document.getElementById("balanceAmount").innerHTML = balance.toLocaleString() + " บาท";
+
+  if (items.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">ยังไม่มีรายการบันทึกรายรับ-รายจ่ายในขณะนี้</td></tr>`;
+    return;
+  }
+
+  items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+  let html = "";
+  items.forEach((item) => {
+    const isIncome = item.type === "income";
+    const amtStr = Number(item.amount || 0).toLocaleString() + " บาท";
+    
+    const receiptHtml = item.receiptImage
+      ? `<button onclick="openImageModal('finance_${item.id}')" class="bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold px-2.5 py-1 rounded-xl text-xs transition flex items-center gap-1 mx-auto">📸 ดูหลักฐาน</button>`
+      : `<span class="text-gray-300 text-xs">- ไม่มี -</span>`;
+
+    // ปุ่มลบเปิดทำงานอิสระตามคำขอเดิม
+    const actionCellHtml = `
+      <td class="p-4 text-center">
+        <button onclick="deleteTransaction('${item.id}')" class="bg-red-50 hover:bg-red-100 text-red-500 text-xs px-2.5 py-1.5 rounded-lg font-bold transition border border-red-200 shadow-sm">
+          🗑️ ลบ
+        </button>
+      </td>`;
+
+    html += `
+      <tr class="hover:bg-orange-50/30 transition text-sm md:text-base">
+        <td class="p-4 font-medium text-gray-500 whitespace-nowrap">${item.date}</td>
+        <td class="p-4 text-gray-800 font-medium break-all">${item.detail}</td>
+        <td class="p-4 text-center">${receiptHtml}</td>
+        <td class="p-4 text-right text-green-600 font-bold">${isIncome ? '+' + amtStr : '-'}</td>
+        <td class="p-4 text-right text-red-500 font-bold">${!isIncome ? '-' + amtStr : '-'}</td>
+        ${actionCellHtml}
+      </tr>
+    `;
+  });
+  tableBody.innerHTML = html;
+});
+
+// 3. ดึงข้อมูลบันทึกอาการวันต่อวัน
+logsCollectionRef.onSnapshot(async (snapshot) => {
+  const docs = [];
+  const fetchPromises = [];
+  
+  snapshot.forEach((doc) => {
+    const logData = { id: doc.id, ...doc.data(), imagesArray: [] };
+    docs.push(logData);
+    
+    const p = doc.ref.collection("images").get().then((imgSnapshot) => {
+      const imgs = [];
+      imgSnapshot.forEach(imgDoc => {
+        imgs.push(imgDoc.data().base64);
+      });
+      logData.imagesArray = imgs;
+    });
+    fetchPromises.push(p);
+  });
+  
+  await Promise.all(fetchPromises);
+  docs.sort((a, b) => (b.logTimestamp || 0) - (a.logTimestamp || 0));
+  renderTimelineFromDocs(docs);
+});
+
+// 4. ดึงข้อมูลคิวสลิปบริจาคหลังบ้านแบบ Realtime
+slipsCollectionRef.onSnapshot((snapshot) => {
+  const tableBody = document.getElementById("slipTableBody");
+  if (snapshot.empty) {
+    tableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">ยังไม่มีข้อมูลสลิปบริจาคส่งเข้ามาในขณะนี้</td></tr>`;
+    return;
+  }
+
+  const slipDocs = [];
+  snapshot.forEach(doc => {
+    const sData = { id: doc.id, ...doc.data() };
+    slipDocs.push(sData);
+    currentSlipDataMap[doc.id] = sData.image; 
+  });
+  
+  slipDocs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+  let html = "";
+  slipDocs.forEach((slipData) => {
+    const docId = slipData.id;
+    const dateStr = slipData.timestamp ? new Date(slipData.timestamp).toLocaleString('th-TH') : "ไม่ระบุเวลา";
+    const amtStr = slipData.amount ? Number(slipData.amount).toLocaleString() + " บาท" : "ไม่ระบุ";
+    const donorName = slipData.donorName ? slipData.donorName : '<span class="text-gray-400 italic">คุณผู้ใจดี</span>';
+
+    html += `
+      <tr class="hover:bg-slate-50 transition">
+        <td class="p-3 text-gray-600 font-medium">${dateStr}</td>
+        <td class="p-3 text-gray-800 font-semibold">${donorName}</td>
+        <td class="p-3 text-green-600 font-bold">${amtStr}</td>
+        <td class="p-3">
+          <button onclick="openImageModal('${docId}')" class="block focus:outline-none" title="คลิกเพื่อขยายรูปสลิป">
+            <img src="${slipData.image}" class="w-16 h-20 object-cover rounded-lg border border-slate-200 shadow-sm hover:scale-110 cursor-zoom-in transition" />
+          </button>
+        </td>
+        <td class="p-3 text-gray-700 max-w-xs break-words">${slipData.message || '<span class="text-gray-300">- ไม่ระบุข้อความ -</span>'}</td>
+        <td class="p-3 text-center">
+          <button onclick="deleteSlip('${docId}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-xl transition text-xs">
+            🗑️ ลบคิว
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+  tableBody.innerHTML = html;
+});
+
+// 💵 ฟังก์ชันเพิ่มบันทึกรายรับ-รายจ่ายจากมือ Admin เอง
+async function addNewTransaction() {
+  const rawDate = document.getElementById("transDate").value;
+  const type = document.getElementById("transType").value;
+  const amount = Number(document.getElementById("transAmount").value);
+  const detail = document.getElementById("transDetail").value.trim();
+  const receiptInput = document.getElementById("transReceiptInput");
+  const btn = document.getElementById("addTransBtn");
+
+  if (!rawDate || !amount || !detail || amount <= 0) {
+    alert("กรุณากรอกข้อมูล วันที่, จำนวนเงิน, และรายละเอียดรายการให้ครบถ้วนครับ");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = "⏳ กำลังบันทึกบัญชี...";
+
+  const dateObj = new Date(rawDate);
+  const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+  const formattedThaiDate = `${dateObj.getDate()} ${thaiMonths[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
+
+  try {
+    let receiptBase64 = null;
+    if (receiptInput.files && receiptInput.files.length > 0) {
+      receiptBase64 = await compressAndResizeImage(receiptInput.files[0]);
+    }
+
+    await financeCollectionRef.add({
+      date: formattedThaiDate,
+      type: type,
+      amount: amount,
+      detail: detail,
+      receiptImage: receiptBase64,
+      timestamp: dateObj.getTime()
+    });
+
+    document.getElementById("transAmount").value = "";
+    document.getElementById("transDetail").value = "";
+    receiptInput.value = "";
+    alert("💸 บันทึกรายการเงินลงสมุดบัญชีเรียบร้อย ยอดรวมคำนวณใหม่แล้วครับ!");
+  } catch (error) {
+    alert("ไม่สามารถบันทึกรายการเงินได้เนื่องจาก: " + error.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = "✨ บันทึกรายการเงินนี้เข้าระบบบัญชีวันต่อวัน";
+  }
+}
+
+// 🗑️ ฟังก์ชันลบรายการบัญชี (ลบปุ๊บ ระบบจะคำนวณยอดบริจาคและยอดคงเหลือใหม่ให้เองทันที)
+async function deleteTransaction(itemId) {
+  if (confirm("⚠️ คุณต้องการลบรายการบัญชีรายรับ-รายจ่ายชิ้นนี้ใช่หรือไม่? (ยอดบริจาคและยอดคงเหลือจะถูกปรับปรุงลดลงอัตโนมัติ)")) {
+    try {
+      await financeCollectionRef.doc(itemId).delete();
+      alert("ลบรายการเงินออกจากระบบบัญชีเรียบร้อย ยอดคงเหลือถูกหักและคำนวณใหม่ให้แล้วครับ!");
+    } catch (error) {
+      alert("ไม่สามารถลบรายการได้: " + error.message);
+    }
+  }
+}
+
+function renderTimelineFromDocs(docsArray) {
+  const container = document.getElementById("timelineContainer");
+  if (!container) return;
+  
+  if (docsArray.length === 0) {
+    container.innerHTML = `<p class="text-gray-400 text-center py-4">ยังไม่มีข้อมูลการอัปเดตอาการ</p>`;
+    return;
+  }
+
+  let html = "";
+  docsArray.forEach((log) => {
+    const logId = log.id;
+    let imagesHtml = "";
+    
+    if (log.imagesArray && log.imagesArray.length > 0) {
+      imagesHtml = `<div class="grid grid-cols-2 gap-2 mt-2">`;
+      log.imagesArray.forEach((imgSrc, idx) => {
+        const logImgKey = `log_${logId}_${idx}`;
+        currentSlipDataMap[logImgKey] = imgSrc;
+
+        imagesHtml += `
+          <div class="overflow-hidden rounded-xl border border-orange-200 bg-white">
+            <button onclick="openImageModal('${logImgKey}')" class="w-full block text-left focus:outline-none">
+              <img src="${imgSrc}" class="w-full h-40 object-cover hover:scale-105 cursor-zoom-in transition duration-300" onerror="this.src='https://placehold.co/600x400?text=รูปภาพไม่ถูกต้อง'"/>
+            </button>
+          </div>`;
+      });
+      imagesHtml += `</div>`;
+    }
+
+    const deleteBtnHtml = isOwnerLoggedIn 
+      ? `<button onclick="deleteConditionLog('${logId}')" class="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-full transition">❌ ลบส่วนนี้</button>` 
+      : "";
+
+    html += `
+      <div class="bg-orange-50 rounded-2xl p-5 border border-orange-100 space-y-3 transition hover:shadow-md relative">
+        <div class="flex justify-between items-center">
+          <span class="text-orange-500 font-bold text-sm bg-orange-100 px-3 py-1 rounded-full">📅 ${log.date}</span>
+          ${deleteBtnHtml}
+        </div>
+        <p class="text-gray-700 text-base leading-relaxed whitespace-pre-line">${log.content}</p>
+        ${imagesHtml}
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+const ADMIN_USER = "แมวน้อย";
+const ADMIN_PASS = "12345";
+
+function handleAdminAuth() {
+  if (isOwnerLoggedIn) {
+    isOwnerLoggedIn = false;
+    document.getElementById("ownerPanel").classList.add("hidden");
+    document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
+    document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
+    alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
+  } else {
+    const userInput = prompt("👤 กรุณากรอก 'ชื่อผู้ใช้' (Username) :");
+    if (userInput === null) return; 
+    const passInput = prompt("🔑 กรุณากรอก 'รหัสผ่าน' (Password) :");
+    if (passInput === null) return; 
+
+    if (userInput === ADMIN_USER && passInput === ADMIN_PASS) {
+      isOwnerLoggedIn = true;
+      document.getElementById("ownerPanel").classList.remove("hidden");
+      document.getElementById("loginBtn").innerHTML = "🚪 Logout (ผู้ดูแล)";
+      document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
+      alert("🔓 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณผู้ดูแลระบบครับ");
+    } else {
+      alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง! ปฏิเสธการเข้าถึง");
+    }
+  }
+}
+
 function compressAndResizeImage(file) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = (event) => {
@@ -120,58 +626,209 @@ function compressAndResizeImage(file) {
       img.src = event.target.result;
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 600;
+        const MAX_WIDTH = 800;
         let width = img.width;
         let height = img.height;
-        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-        canvas.width = width; canvas.height = height;
+
+        if (width > MAX_WIDTH) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        }
+        canvas.width = width;
+        canvas.height = height;
+
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.5));
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
+        resolve(compressedBase64);
       };
+      img.onerror = (err) => reject(err);
     };
+    reader.onerror = (error) => reject(error);
   });
 }
 
-// ฟังก์ชันเพิ่มบันทึกอาการ
 async function addNewConditionLog() {
-  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอิน");
+  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
+  
+  const rawDateVal = document.getElementById("newLogDate").value;
   const filesInput = document.getElementById("newLogImagesInput");
-  const contentVal = document.getElementById("newLogContent").value;
-  const btn = document.getElementById("addLogBtn");
-  if (!contentVal) return alert("กรุณากรอกรายละเอียด");
+  const contentVal = document.getElementById("newLogContent").value.trim();
+  const addLogBtn = document.getElementById("addLogBtn");
 
-  btn.disabled = true;
-  btn.innerText = "⏳ กำลังบันทึก...";
+  if (!rawDateVal || !contentVal) {
+    alert("กรุณาเลือกวันที่จากปฏิทินและกรอกรายละเอียดอาการของน้องแมวด้วยครับ");
+    return;
+  }
+
+  addLogBtn.disabled = true;
+  addLogBtn.innerHTML = "⏳ กำลังประมวลผลรูปภาพทั้งหมด...";
+
+  const dateObj = new Date(rawDateVal);
+  const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+  const formattedThaiDate = `${dateObj.getDate()} ${thaiMonths[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
+
   try {
     const newLogRef = await logsCollectionRef.add({
-      date: document.getElementById("newLogDate").value,
+      date: formattedThaiDate,
       content: contentVal,
-      logTimestamp: Date.now()
+      logTimestamp: dateObj.getTime()
     });
-    if (filesInput.files.length > 0) {
-      for (let i = 0; i < filesInput.files.length; i++) {
-        btn.innerText = `⏳ อัปโหลดรูปที่ ${i + 1}/${filesInput.files.length}...`;
-        const base64 = await compressAndResizeImage(filesInput.files[i]);
-        await newLogRef.collection("images").add({ base64, uploadedAt: Date.now() });
-      }
+    
+    if (filesInput.files && filesInput.files.length > 0) {
+      addLogBtn.innerHTML = `⏳ กำลังบีบอัดและอัปโหลดรูปภาพ (0/${filesInput.files.length})...`;
+      const uploadPromises = Array.from(filesInput.files).map(async (file, index) => {
+        const compressedBase64Str = await compressAndResizeImage(file);
+        return newLogRef.collection("images").add({
+          base64: compressedBase64Str,
+          uploadedAt: Date.now() + index
+        });
+      });
+      await Promise.all(uploadPromises);
     }
-    alert("บันทึกเรียบร้อย!");
-    location.reload();
-  } catch (e) { alert("Error: " + e.message); btn.disabled = false; btn.innerText = "✨ บันทึกอาการ"; }
+    
+    document.getElementById("newLogDate").value = "";
+    document.getElementById("newLogImagesInput").value = "";
+    document.getElementById("newLogContent").value = "";
+    alert("เพิ่มข้อมูลอาการประจำวันพร้อมรูปภาพทั้งหมดลงไทม์ไลน์เรียบร้อยแล้ว! 🎉🐱");
+  } catch (error) {
+    alert("ไม่สามารถเพิ่มข้อมูลอาการได้เนื่องจาก: " + error.message);
+  } finally {
+    addLogBtn.disabled = false;
+    addLogBtn.innerHTML = "✨ เพิ่มบันทึกวันนี้น้องลงไทม์ไลน์อาการ";
+  }
 }
 
-function handleAdminAuth() {
-  if (isOwnerLoggedIn) { location.reload(); }
-  else {
-    const pass = prompt("รหัสผ่าน:");
-    if (pass === "12345") {
-      isOwnerLoggedIn = true;
-      document.getElementById("ownerPanel").classList.remove("hidden");
-      document.getElementById("loginBtn").innerText = "🚪 Logout";
-    } else { alert("รหัสผิด"); }
+async function deleteConditionLog(logId) {
+  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
+  if (confirm("⚠️ คุณแน่ใจใช่ไหมว่าต้องการลบบันทึกอาการของวันนี้ทิ้งอย่างถาวร?")) {
+    try {
+      const imgSnapshot = await logsCollectionRef.doc(logId).collection("images").get();
+      const deletePromises = [];
+      imgSnapshot.forEach(imgDoc => {
+        deletePromises.push(imgDoc.ref.delete());
+      });
+      await Promise.all(deletePromises);
+      await logsCollectionRef.doc(logId).delete();
+      alert("ลบข้อมูลบันทึกอาการเรียบร้อยแล้วครับ!");
+    } catch (error) {
+      alert("ไม่สามารถลบข้อมูลได้เนื่องจาก: " + error.message);
+    }
+  }
+}
+
+// 📤 ฟังก์ชันส่งสลิปบริจาค
+async function submitDonationSlip() {
+  const nameInput = document.getElementById("slipDonorNameInput");
+  const amtInput = document.getElementById("slipAmountInput");
+  const fileInput = document.getElementById("slipFileInput");
+  const msgInput = document.getElementById("slipMessageInput");
+  const submitBtn = document.getElementById("submitSlipBtn");
+
+  const amountVal = Number(amtInput.value);
+  const donorNameVal = nameInput.value.trim();
+
+  if (!amtInput.value || amountVal <= 0) {
+    alert("❌ กรุณาระบุจำนวนเงินที่โอนให้ถูกต้องด้วยนะครับ");
+    return;
+  }
+  if (!fileInput.files || fileInput.files.length === 0) {
+    alert("❌ กรุณาเลือกไฟล์รูปภาพสลิปธนาคารก่อนกดส่งนะครับ");
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = "⏳ กำลังส่งหลักฐานและบวกยอดเงิน...";
+
+  try {
+    const compressedSlipBase64 = await compressAndResizeImage(fileInput.files[0]);
+    const nowTimestamp = Date.now();
+    
+    const dateObj = new Date();
+    const thaiMonthsShort = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+    const formattedThaiDate = `${dateObj.getDate()} ${thaiMonthsShort[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
+
+    // 1. ส่งข้อมูลเข้าคิวสลิปหลังบ้าน
+    await slipsCollectionRef.add({
+      donorName: donorNameVal || "",
+      amount: amountVal,
+      image: compressedSlipBase64,
+      message: msgInput.value.trim(),
+      timestamp: nowTimestamp
+    });
+
+    // 2. แทรกข้อมูลเข้าตารางบัญชี "รายรับ-รายจ่าย" อัตโนมัติ
+    let displayDonorName = donorNameVal ? `คุณ ${donorNameVal}` : "คุณผู้ใจดี";
+    let commentStr = `${displayDonorName} ร่วมบริจาค (สลิปส่งจากหน้าเว็บ)`;
+    
+    if (msgInput.value.trim()) {
+      commentStr += ` - "${msgInput.value.trim()}"`;
+    }
+
+    await financeCollectionRef.add({
+      date: formattedThaiDate,
+      type: "income",
+      amount: amountVal,
+      detail: commentStr,
+      receiptImage: compressedSlipBase64,
+      timestamp: nowTimestamp
+    });
+
+    nameInput.value = "";
+    amtInput.value = "";
+    fileInput.value = "";
+    msgInput.value = "";
+    alert("💖 บันทึกยอดเงินในชื่อของคุณเรียบร้อยแล้ว ขอบคุณสำหรับความเมตตาแทนน้องแมวด้วยนะครับ!");
+  } catch (error) {
+    alert("เกิดข้อผิดพลาดในการส่งข้อมูล: " + error.message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = "ส่งสลิปเพื่อร่วมช่วยน้อง 💖";
+  }
+}
+
+async function deleteSlip(docId) {
+  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
+  if (confirm("คุณต้องการลบสลิปนี้ออกจากคิวตรวจสอบใช่ไหม? (ไม่ส่งผลกระทบต่อยอดเงินที่บันทึกในตารางบัญชีไปแล้ว)")) {
+    try {
+      await slipsCollectionRef.doc(docId).delete();
+      alert("ลบรายการสลิปจากคิวเรียบร้อยแล้วครับ");
+    } catch (error) {
+      alert("ไม่สามารถลบสลิปได้: " + error.message);
+    }
+  }
+}
+
+async function toggleDonation(){
+  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
+  try {
+    await liveDataRef.update({ donationOpen: !donationOpen });
+  } catch (error) {
+    alert("ไม่สามารถเปลี่ยนสถานะได้: " + error.message);
+  }
+}
+
+function updateDonationUI(isOpen) {
+  const statusBox = document.getElementById("statusBox");
+  const qrBox = document.getElementById("qrBox");
+  const slipSection = document.getElementById("slipSection");
+  const toggleBtn = document.getElementById("toggleBtn");
+
+  if(isOpen){
+    statusBox.innerHTML = "💖 เปิดรับบริจาคอยู่";
+    statusBox.className = "mt-8 inline-flex items-center gap-3 bg-green-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
+    if(qrBox) qrBox.style.display = "block";
+    if(slipSection) slipSection.style.display = "block";
+    toggleBtn.innerHTML = "🔴 ปิดรับบริจาคชั่วคราว";
+  }else{
+    statusBox.innerHTML = "🙏 ปิดรับบริจาคชั่วคราว";
+    statusBox.className = "mt-8 inline-flex items-center gap-3 bg-gray-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
+    if(qrBox) qrBox.style.display = "none";
+    if(slipSection) slipSection.style.display = "none";
+    toggleBtn.innerHTML = "🟢 เปิดรับบริจาคอีกครั้ง";
   }
 }
 </script>
+
 </body>
 </html>
