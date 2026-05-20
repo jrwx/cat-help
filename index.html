@@ -234,12 +234,13 @@
               <th class="p-4 font-semibold text-center">หลักฐาน</th>
               <th class="p-4 font-semibold text-right">รายรับ (+)</th>
               <th class="p-4 font-semibold text-right">รายจ่าย (-)</th>
-              <th class="p-4 font-semibold text-center">จัดการ</th>
+              <!-- ส่วนหัวคอลัมน์ "จัดการ" จะถูกควบคุมการแสดงผลผ่าน JavaScript โดยเริ่มต้นจะถูกซ่อนไว้ -->
+              <th id="thAction" class="p-4 font-semibold text-center hidden">จัดการ</th>
             </tr>
           </thead>
           <tbody id="financeTableBody" class="text-base divide-y divide-gray-100">
             <tr>
-              <td colspan="6" class="p-4 text-center text-gray-400">กำลังโหลดสมุดบัญชีรายรับ-รายจ่าย...</td>
+              <td colspan="5" id="tdLoading" class="p-4 text-center text-gray-400">กำลังโหลดสมุดบัญชีรายรับ-รายจ่าย...</td>
             </tr>
           </tbody>
         </table>
@@ -319,6 +320,7 @@ const financeCollectionRef = db.collection("finance_ledgers");
 let isOwnerLoggedIn = false;
 let donationOpen = true;
 let currentSlipDataMap = {}; 
+let globalFinanceItems = []; // เก็บตัวแปรส่วนกลางสำหรับวาดตารางใหม่เมื่อกด Login/Logout
 
 function openImageModal(docId) {
   const base64Data = currentSlipDataMap[docId];
@@ -344,17 +346,68 @@ liveDataRef.onSnapshot((doc) => {
   }
 });
 
+// ฟังก์ชันวาดตารางรายรับ-รายจ่ายใหม่ตามสถานะล็อกอิน
+function renderFinanceTable() {
+  const tableBody = document.getElementById("financeTableBody");
+  const thAction = document.getElementById("thAction");
+  const tdLoading = document.getElementById("tdLoading");
+
+  // ควบคุมหัวคอลัมน์ "จัดการ" หลังเว็บ/หน้าเว็บ
+  if (isOwnerLoggedIn) {
+    thAction.classList.remove("hidden");
+    if(tdLoading) tdLoading.setAttribute("colspan", "6");
+  } else {
+    thAction.classList.add("hidden");
+    if(tdLoading) tdLoading.setAttribute("colspan", "5");
+  }
+
+  if (globalFinanceItems.length === 0) {
+    const colSpanNum = isOwnerLoggedIn ? 6 : 5;
+    tableBody.innerHTML = `<tr><td colspan="${colSpanNum}" class="p-4 text-center text-gray-400">ยังไม่มีรายการบันทึกรายรับ-รายจ่ายในขณะนี้</td></tr>`;
+    return;
+  }
+
+  let html = "";
+  globalFinanceItems.forEach((item) => {
+    const isIncome = item.type === "income";
+    const amtStr = Number(item.amount || 0).toLocaleString() + " บาท";
+    
+    const receiptHtml = item.receiptImage
+      ? `<button onclick="openImageModal('finance_${item.id}')" class="bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold px-2.5 py-1 rounded-xl text-xs transition flex items-center gap-1 mx-auto">📸 ดูหลักฐาน</button>`
+      : `<span class="text-gray-300 text-xs">- ไม่มี -</span>`;
+
+    // ถ้าเข้าสู่ระบบ ให้แสดงคอลัมน์ลบ ถ้าเป็นหน้าเว็บทั่วไปจะไม่เรนเดอร์แท็ก <td> ส่วนนี้ออกมาเลย
+    const actionCellHtml = isOwnerLoggedIn 
+      ? `<td class="p-4 text-center">
+          <button onclick="deleteTransaction('${item.id}')" class="bg-red-50 hover:bg-red-100 text-red-500 text-xs px-2.5 py-1.5 rounded-lg font-bold transition border border-red-200 shadow-sm">
+            🗑️ ลบ
+          </button>
+        </td>`
+      : "";
+
+    html += `
+      <tr class="hover:bg-orange-50/30 transition text-sm md:text-base">
+        <td class="p-4 font-medium text-gray-500 whitespace-nowrap">${item.date}</td>
+        <td class="p-4 text-gray-800 font-medium break-all">${item.detail}</td>
+        <td class="p-4 text-center">${receiptHtml}</td>
+        <td class="p-4 text-right text-green-600 font-bold">${isIncome ? '+' + amtStr : '-'}</td>
+        <td class="p-4 text-right text-red-500 font-bold">${!isIncome ? '-' + amtStr : '-'}</td>
+        ${actionCellHtml}
+      </tr>
+    `;
+  });
+  tableBody.innerHTML = html;
+}
+
 // 2. ดึงข้อมูลรายรับ-รายจ่ายวันต่อวันแบบ Realtime + คำนวณยอดอัตโนมัติ
 financeCollectionRef.onSnapshot((snapshot) => {
-  const tableBody = document.getElementById("financeTableBody");
-  
   let totalIn = 0;
   let totalOut = 0;
-  const items = [];
+  globalFinanceItems = [];
 
   snapshot.forEach((doc) => {
     const data = doc.data();
-    items.push({ id: doc.id, ...data });
+    globalFinanceItems.push({ id: doc.id, ...data });
     
     if (data.type === "income") {
       totalIn += Number(data.amount || 0);
@@ -373,43 +426,10 @@ financeCollectionRef.onSnapshot((snapshot) => {
   document.getElementById("totalExpense").innerHTML = totalOut.toLocaleString() + " บาท";
   document.getElementById("balanceAmount").innerHTML = balance.toLocaleString() + " บาท";
 
-  if (items.length === 0) {
-    tableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">ยังไม่มีรายการบันทึกรายรับ-รายจ่ายในขณะนี้</td></tr>`;
-    return;
-  }
-
-  items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-
-  let html = "";
-  items.forEach((item) => {
-    const isIncome = item.type === "income";
-    const amtStr = Number(item.amount || 0).toLocaleString() + " บาท";
-    
-    const receiptHtml = item.receiptImage
-      ? `<button onclick="openImageModal('finance_${item.id}')" class="bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold px-2.5 py-1 rounded-xl text-xs transition flex items-center gap-1 mx-auto">📸 ดูหลักฐาน</button>`
-      : `<span class="text-gray-300 text-xs">- ไม่มี -</span>`;
-
-    // แก้ไข: แสดงปุ่มลบเฉพาะเมื่อเจ้าของเข้าสู่ระบบเท่านั้น
-    const actionCellHtml = isOwnerLoggedIn 
-      ? `<td class="p-4 text-center">
-          <button onclick="deleteTransaction('${item.id}')" class="bg-red-50 hover:bg-red-100 text-red-500 text-xs px-2.5 py-1.5 rounded-lg font-bold transition border border-red-200 shadow-sm">
-            🗑️ ลบ
-          </button>
-        </td>`
-      : `<td class="p-4 text-center text-gray-300 text-xs">-</td>`;
-
-    html += `
-      <tr class="hover:bg-orange-50/30 transition text-sm md:text-base">
-        <td class="p-4 font-medium text-gray-500 whitespace-nowrap">${item.date}</td>
-        <td class="p-4 text-gray-800 font-medium break-all">${item.detail}</td>
-        <td class="p-4 text-center">${receiptHtml}</td>
-        <td class="p-4 text-right text-green-600 font-bold">${isIncome ? '+' + amtStr : '-'}</td>
-        <td class="p-4 text-right text-red-500 font-bold">${!isIncome ? '-' + amtStr : '-'}</td>
-        ${actionCellHtml}
-      </tr>
-    `;
-  });
-  tableBody.innerHTML = html;
+  globalFinanceItems.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  
+  // เรียกวาดตาราง
+  renderFinanceTable();
 });
 
 // 3. ดึงข้อมูลบันทึกอาการวันต่อวัน
@@ -530,7 +550,7 @@ async function addNewTransaction() {
   }
 }
 
-// 🗑️ ฟังก์ชันลบรายการบัญชี (แก้ไขเรียบร้อย ล็อคความปลอดภัยสองชั้น)
+// 🗑️ ฟังก์ชันลบรายการบัญชี (ล็อคความปลอดภัยสองชั้น ป้องกันการยิง Console บั๊ก)
 async function deleteTransaction(itemId) {
   if (!isOwnerLoggedIn) {
     alert("❌ คุณไม่มีสิทธิ์ลบรายการนี้!");
@@ -605,8 +625,7 @@ function handleAdminAuth() {
     document.getElementById("loginBtn").innerHTML = "🔐 Owner Login";
     document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
     alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
-    // รีเฟรชตารางหลัง Logout เพื่อซ่อนปุ่มลบ
-    financeCollectionRef.get().then(() => {}); 
+    renderFinanceTable(); // รีเฟรชตารางเพื่อซ่อนคอลัมน์ จัดการ ทันที
   } else {
     const userInput = prompt("👤 กรุณากรอก 'ชื่อผู้ใช้' (Username) :");
     if (userInput === null) return; 
@@ -619,8 +638,7 @@ function handleAdminAuth() {
       document.getElementById("loginBtn").innerHTML = "🚪 Logout (ผู้ดูแล)";
       document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
       alert("🔓 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณผู้ดูแลระบบครับ");
-      // รีเฟรชตารางหลัง Login เพื่อแสดงปุ่มลบ
-      financeCollectionRef.get().then(() => {});
+      renderFinanceTable(); // รีเฟรชตารางเพื่อแสดงคอลัมน์ จัดการ ทันที
     } else {
       alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง! ปฏิเสธการเข้าถึง");
     }
