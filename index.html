@@ -23,12 +23,6 @@
       background:rgba(255,255,255,.75);
       backdrop-filter:blur(12px);
     }
-    .sticky-box {
-      position: -webkit-sticky;
-      position: sticky;
-      top: 6rem;
-      align-self: start;
-    }
   </style>
 </head>
 
@@ -184,7 +178,7 @@
 
 <section id="donationSection" class="max-w-6xl mx-auto px-5 py-10">
   <div class="grid md:grid-cols-2 gap-8 items-start">
-    <div id="qrBox" class="bg-white rounded-3xl shadow-xl overflow-hidden border border-orange-100 sticky-box">
+    <div id="qrBox" class="bg-white rounded-3xl shadow-xl overflow-hidden border border-orange-100">
       <div class="bg-orange-500 text-white p-6">
         <h2 class="text-3xl font-bold">💳 ช่องทางการโอนบริจาค</h2>
       </div>
@@ -305,7 +299,6 @@
 </footer>
 
 <script>
-// สั่งบังคับให้หน้าเว็บดึงมาอยู่ด้านบนสุดทันทีตั้งแต่เริ่มโหลดออบเจกต์ (ป้องกันเบราว์เซอร์จำสกรอลล์เก่า)
 if ('scrollRestoration' in history) {
   history.scrollRestoration = 'manual';
 }
@@ -338,6 +331,7 @@ let isOwnerLoggedIn = false;
 let donationOpen = true;
 let currentSlipDataMap = {}; 
 let globalFinanceItems = []; 
+let globalTimelineItems = []; // ตัวแปร Global เก็บข้อมูลไทม์ไลน์อาการแมวชุดปัจจุบัน
 
 function openImageModal(docId) {
   const base64Data = currentSlipDataMap[docId];
@@ -477,7 +471,9 @@ logsCollectionRef.onSnapshot(async (snapshot) => {
   
   await Promise.all(fetchPromises);
   docs.sort((a, b) => (b.logTimestamp || 0) - (a.logTimestamp || 0));
-  renderTimelineFromDocs(docs);
+  
+  globalTimelineItems = docs; // จดจำข้อมูลชุดล่าสุดลงตัวแปร Global
+  renderTimelineFromDocs();   // สั่งเรนเดอร์ลงหน้าจอ
 });
 
 slipsCollectionRef.onSnapshot((snapshot) => {
@@ -572,17 +568,17 @@ async function addNewTransaction() {
   }
 }
 
-function renderTimelineFromDocs(docsArray) {
+function renderTimelineFromDocs() {
   const container = document.getElementById("timelineContainer");
   if (!container) return;
   
-  if (docsArray.length === 0) {
+  if (globalTimelineItems.length === 0) {
     container.innerHTML = `<p class="text-gray-400 text-center py-4">ยังไม่มีข้อมูลการอัปเดตอาการ</p>`;
     return;
   }
 
   let html = "";
-  docsArray.forEach((log) => {
+  globalTimelineItems.forEach((log) => {
     const logId = log.id;
     let imagesHtml = "";
     
@@ -602,8 +598,9 @@ function renderTimelineFromDocs(docsArray) {
       imagesHtml += `</div>`;
     }
 
+    // ปุ่มลบอาการสีแดง แสดงผลเฉพาะเมื่อเจ้าของระบบ (Admin) ทำการล็อกอินสำเร็จเท่านั้น
     const deleteBtnHtml = isOwnerLoggedIn 
-      ? `<button onclick="deleteConditionLog('${logId}')" class="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-full transition">❌ ลบส่วนนี้</button>` 
+      ? `<button onclick="deleteConditionLog('${logId}')" class="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-full border border-red-200 transition shadow-sm">❌ ลบส่วนนี้</button>` 
       : "";
 
     html += `
@@ -631,6 +628,7 @@ function handleAdminAuth() {
     document.getElementById("loginBtn").className = "bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
     alert("ออกจากระบบผู้ดูแลเรียบร้อยแล้วครับ");
     renderFinanceTable(); 
+    renderTimelineFromDocs(); // บังคับอัปเดตเพื่อซ่อนปุ่มลบอาการ
   } else {
     const userInput = prompt("👤 กรุณากรอก 'ชื่อผู้ใช้' (Username) :");
     if (userInput === null) return; 
@@ -644,6 +642,7 @@ function handleAdminAuth() {
       document.getElementById("loginBtn").className = "bg-red-500 hover:bg-red-600 transition text-white px-5 py-3 rounded-full shadow-lg font-semibold";
       alert("🔓 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับคุณผู้ดูแลระบบครับ");
       renderFinanceTable(); 
+      renderTimelineFromDocs(); // บังคับอัปเดตเพื่อโชว์ปุ่มลบอาการสำหรับ Admin
     } else {
       alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง!");
     }
