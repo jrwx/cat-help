@@ -184,6 +184,7 @@
 </footer>
 
 <script>
+// CONFIG สำหรับเชื่อมต่อ Firebase (ใช้ค่าเดิมของคุณ)
 const firebaseConfig = {
   apiKey: "AIzaSyDLL5PYwQ3aHxeA-PszAh2x3mJxTUDXdpY",
   authDomain: "cat-help-18ffb.firebaseapp.com",
@@ -194,32 +195,35 @@ const firebaseConfig = {
   measurementId: "G-LEB15WNE0X"
 };
 
+// เริ่มทำงานระบบ Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const liveDataRef = db.collection("cat_status").doc("live_data");
 
+// 🔑 รายชื่ออีเมลผู้ดูแลระบบ (ปรับเป็นตัวพิมพ์เล็กทั้งหมดแล้วเพื่อป้องกันการตรวจพลาด)
 const allowedOwners = [
   "j45phuarram@gmail.com",
   "mhiwpharr@hotmail.com"
 ];
 
+// สถานะการเปิดรับบริจาคเริ่มต้น
 let donationOpen = true;
 
-// ดึงข้อมูลแบบ Realtime จาก Firebase มาแสดงบนเว็บอัตโนมัติ
+// 1. ดึงข้อมูลแบบ Realtime จาก Firebase มาแสดงบนหน้าเว็บโดยอัตโนมัติ
 liveDataRef.onSnapshot((doc) => {
   if (doc.exists) {
     const data = doc.data();
     donationOpen = data.donationOpen;
     const balance = data.totalDonation - data.totalExpense;
 
-    // แสดงผลบนหน้าเว็บ
+    // เปลี่ยนข้อความบนหน้าเว็บตามฐานข้อมูล
     document.getElementById("totalDonation").innerHTML = data.totalDonation.toLocaleString() + " บาท";
     document.getElementById("totalExpense").innerHTML = data.totalExpense.toLocaleString() + " บาท";
     document.getElementById("balanceAmount").innerHTML = balance.toLocaleString() + " บาท";
     document.getElementById("expenseList").innerText = data.expenseDetail;
     document.getElementById("catConditionText").innerText = data.catCondition;
 
-    // ใส่ค่าล่าสุดรอกล่องกรอกข้อมูลของแอดมิน
+    // ดึงค่ามาใส่ในช่องพิมพ์ของแอดมินรอไว้เลย (ทำให้พิมพ์แก้ไขหน้าเว็บได้ง่ายขึ้น)
     document.getElementById("donationInput").value = data.totalDonation;
     document.getElementById("expenseInput").value = data.totalExpense;
     document.getElementById("expenseDetail").value = data.expenseDetail;
@@ -229,23 +233,31 @@ liveDataRef.onSnapshot((doc) => {
   }
 });
 
-// เช็คสถานะการ Login
+// 2. ตรวจสอบสถานะหลังจากผู้ดูแลกดล็อกอินด้วย Google สำเร็จ
 firebase.auth().getRedirectResult()
 .then((result)=>{
   const user = result.user;
   if(user){
-    if(allowedOwners.includes(user.email)){
+    // 💡 แปลงอีเมลที่ล็อกอินมาให้เป็น "ตัวพิมพ์เล็กทั้งหมด" ก่อนนำไปเช็คสิทธิ์ในระบบ
+    const loggedInEmail = user.email.toLowerCase();
+
+    if(allowedOwners.includes(loggedInEmail)){
+      // ถ้าอีเมลตรงกัน แผงควบคุมสีส้มจะปรากฏขึ้นมาบนหน้าเว็บทันที
       document.getElementById("ownerPanel").classList.remove("hidden");
       document.getElementById("loginBtn").innerHTML = "🔓 บัญชีผู้ดูแล: " + user.email;
-      alert("เข้าสู่ระบบสำเร็จ ช่องแก้ไขข้อมูลปรากฏขึ้นแล้วครับ");
+      alert("เข้าสู่ระบบสำเร็จ! คุณสามารถแก้ไขข้อมูลหน้าเว็บได้แล้วครับ");
     }else{
-      alert("คุณไม่มีสิทธิ์เข้าใช้งานระบบผู้ดูแล");
+      alert("คุณไม่มีสิทธิ์เข้าใช้งานระบบผู้ดูแล (อีเมลไม่ตรงกับรายชื่อ)");
       firebase.auth().signOut();
     }
   }
 })
-.catch((error)=>{ console.log(error); });
+.catch((error)=>{ 
+  console.log(error); 
+  alert("เกิดข้อผิดพลาด: " + error.message);
+});
 
+// ฟังก์ชันสั่งล็อกอินด้วย Google
 async function loginWithGoogle(){
   const provider = new firebase.auth.GoogleAuthProvider();
   try{
@@ -255,7 +267,7 @@ async function loginWithGoogle(){
   }
 }
 
-// แอดมินกดบันทึกจากหน้าเว็บ ค่าจะไปเซฟใน Firebase ให้เอง
+// ฟังก์ชันเมื่อแอดมินกดปุ่ม "บันทึกข้อมูล" จากหน้าเว็บ
 async function updateFinance(){
   const donation = Number(document.getElementById("donationInput").value);
   const expense = Number(document.getElementById("expenseInput").value);
@@ -263,6 +275,7 @@ async function updateFinance(){
   const condition = document.getElementById("catConditionInput").value;
 
   try {
+    // ส่งข้อมูลใหม่ไปอัปเดตบนคลาวด์ Firebase หน้าเว็บจะเปลี่ยนตามทันที
     await liveDataRef.update({
       totalDonation: donation,
       totalExpense: expense,
@@ -271,10 +284,11 @@ async function updateFinance(){
     });
     alert("อัปเดตข้อมูลหน้าเว็บสำเร็จแล้ว! 🎉");
   } catch (error) {
-    alert("เกิดข้อผิดพลาด: " + error.message);
+    alert("ไม่สามารถบันทึกข้อมูลได้: " + error.message);
   }
 }
 
+// ฟังก์ชันสลับเปิด-ปิดรับบริจาค
 async function toggleDonation(){
   try {
     await liveDataRef.update({ donationOpen: !donationOpen });
@@ -283,6 +297,7 @@ async function toggleDonation(){
   }
 }
 
+// ฟังก์ชันปรับหน้าตาเว็บตามสถานะ เปิด/ปิด บริจาค
 function updateDonationUI(isOpen) {
   const statusBox = document.getElementById("statusBox");
   const donationSection = document.getElementById("donationSection");
@@ -305,7 +320,6 @@ function updateDonationUI(isOpen) {
     toggleBtn.className = "w-full bg-green-500 hover:bg-green-600 transition text-white py-4 rounded-2xl text-lg font-semibold shadow-lg";
   }
 }
-</script>
 
 </body>
 </html>
