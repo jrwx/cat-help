@@ -153,6 +153,7 @@
             <thead>
               <tr class="bg-slate-200 text-slate-700 text-sm">
                 <th class="p-3 font-semibold">วัน-เวลาที่ส่ง</th>
+                <th class="p-3 font-semibold">ชื่อผู้บริจาค</th>
                 <th class="p-3 font-semibold">จำนวนเงิน</th>
                 <th class="p-3 font-semibold">รูปภาพสลิป</th>
                 <th class="p-3 font-semibold">ข้อความให้กำลังใจ</th>
@@ -161,7 +162,7 @@
             </thead>
             <tbody id="slipTableBody" class="text-sm divide-y divide-slate-100">
               <tr>
-                <td colspan="5" class="p-4 text-center text-gray-400">ยังไม่มีสลิปส่งเข้ามา หรือ กำลังโหลดข้อมูล...</td>
+                <td colspan="6" class="p-4 text-center text-gray-400">ยังไม่มีสลิปส่งเข้ามา หรือ กำลังโหลดข้อมูล...</td>
               </tr>
             </tbody>
           </table>
@@ -238,9 +239,15 @@
         <h2 class="text-3xl font-bold">📤 แนบสลิปบริจาค</h2>
       </div>
       <div class="p-8 space-y-5">
-        <div>
-          <label class="text-sm font-semibold text-gray-600 block mb-1">🪙 ระบุจำนวนเงินที่โอนร่วมบริจาค (บาท) *</label>
-          <input id="slipAmountInput" type="number" placeholder="ตัวอย่างเช่น: 100" class="w-full p-4 rounded-2xl border border-orange-200 font-medium text-lg" />
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-semibold text-gray-600 block mb-1">👤 ระบุชื่อของคุณผู้ใจดี (ไม่บังคับ)</label>
+            <input id="slipDonorNameInput" type="text" placeholder="เช่น คุณสมชาย / ผู้ไม่ประสงค์ออกนาม" class="w-full p-4 rounded-2xl border border-orange-200 font-medium" />
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-gray-600 block mb-1">🪙 ระบุจำนวนเงินที่โอนร่วมบริจาค (บาท) *</label>
+            <input id="slipAmountInput" type="number" placeholder="ตัวอย่างเช่น: 100" class="w-full p-4 rounded-2xl border border-orange-200 font-medium text-lg" />
+          </div>
         </div>
         <div>
           <label class="text-sm font-semibold text-gray-600 block mb-1">🖼️ เลือกไฟล์รูปภาพสลิป *</label>
@@ -344,6 +351,7 @@ financeCollectionRef.onSnapshot((snapshot) => {
     }
   });
 
+  // คำนวณยอดคงเหลือใหม่แบบสดๆ เมื่อมี Snapshot เปลี่ยนแปลง (รวมถึงตอนกดลบด้วย)
   const balance = totalIn - totalOut;
   document.getElementById("totalDonation").innerHTML = totalIn.toLocaleString() + " บาท";
   document.getElementById("totalExpense").innerHTML = totalOut.toLocaleString() + " บาท";
@@ -366,7 +374,7 @@ financeCollectionRef.onSnapshot((snapshot) => {
       : `<span class="text-gray-300 text-xs">- ไม่มี -</span>`;
 
     const actionCellHtml = isOwnerLoggedIn 
-      ? `<td class="p-4 text-center"><button onclick="deleteTransaction('${item.id}')" class="bg-red-50 hover:bg-red-100 text-red-500 text-xs px-2.5 py-1 rounded-lg font-bold transition">🗑️ ลบ</button></td>`
+      ? `<td class="p-4 text-center action-col"><button onclick="deleteTransaction('${item.id}')" class="bg-red-50 hover:bg-red-100 text-red-500 text-xs px-2.5 py-1 rounded-lg font-bold transition">🗑️ ลบ</button></td>`
       : `<td class="p-4 text-center hidden action-col"></td>`;
 
     html += `
@@ -412,7 +420,7 @@ logsCollectionRef.onSnapshot(async (snapshot) => {
 slipsCollectionRef.onSnapshot((snapshot) => {
   const tableBody = document.getElementById("slipTableBody");
   if (snapshot.empty) {
-    tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">ยังไม่มีข้อมูลสลิปบริจาคส่งเข้ามาในขณะนี้</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">ยังไม่มีข้อมูลสลิปบริจาคส่งเข้ามาในขณะนี้</td></tr>`;
     return;
   }
 
@@ -430,10 +438,12 @@ slipsCollectionRef.onSnapshot((snapshot) => {
     const docId = slipData.id;
     const dateStr = slipData.timestamp ? new Date(slipData.timestamp).toLocaleString('th-TH') : "ไม่ระบุเวลา";
     const amtStr = slipData.amount ? Number(slipData.amount).toLocaleString() + " บาท" : "ไม่ระบุ";
+    const donorName = slipData.donorName ? slipData.donorName : '<span class="text-gray-400 italic">คุณผู้ใจดี</span>';
 
     html += `
       <tr class="hover:bg-slate-50 transition">
         <td class="p-3 text-gray-600 font-medium">${dateStr}</td>
+        <td class="p-3 text-gray-800 font-semibold">${donorName}</td>
         <td class="p-3 text-green-600 font-bold">${amtStr}</td>
         <td class="p-3">
           <button onclick="openImageModal('${docId}')" class="block focus:outline-none" title="คลิกเพื่อขยายรูปสลิป">
@@ -502,12 +512,13 @@ async function addNewTransaction() {
   }
 }
 
+// 🗑️ ฟังก์ชันลบรายการบัญชี (ลบปุ๊บ ระบบออนสแนปช็อตจะคำนวณยอดบริจาคและยอดคงเหลือใหม่ให้เองทันที)
 async function deleteTransaction(itemId) {
   if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
-  if (confirm("⚠️ คุณต้องการลบรายการบัญชีรายรับ-รายจ่ายชิ้นนี้ใช่หรือไม่?")) {
+  if (confirm("⚠️ คุณต้องการลบรายการบัญชีรายรับ-รายจ่ายชิ้นนี้ใช่หรือไม่? (ยอดบริจาคและยอดคงเหลือจะถูกปรับปรุงลดลงอัตโนมัติ)")) {
     try {
       await financeCollectionRef.doc(itemId).delete();
-      alert("ลบรายการเงินเรียบร้อยแล้วครับ");
+      alert("ลบรายการเงินออกจากระบบบัญชีเรียบร้อย ยอดคงเหลือคำนวณใหม่แล้วครับ!");
     } catch (error) {
       alert("ไม่สามารถลบรายการได้: " + error.message);
     }
@@ -703,14 +714,16 @@ async function deleteConditionLog(logId) {
   }
 }
 
-// 📤 ✨ ฟังก์ชันส่งสลิปบริจาค (เวอร์ชันอัปเกรด: แตกข้อมูลเพิ่มลงตารางรายรับอัตโนมัติ)
+// 📤 ✨ ฟังก์ชันส่งสลิปบริจาค
 async function submitDonationSlip() {
+  const nameInput = document.getElementById("slipDonorNameInput");
   const amtInput = document.getElementById("slipAmountInput");
   const fileInput = document.getElementById("slipFileInput");
   const msgInput = document.getElementById("slipMessageInput");
   const submitBtn = document.getElementById("submitSlipBtn");
 
   const amountVal = Number(amtInput.value);
+  const donorNameVal = nameInput.value.trim();
 
   if (!amtInput.value || amountVal <= 0) {
     alert("❌ กรุณาระบุจำนวนเงินที่โอนให้ถูกต้องด้วยนะครับ");
@@ -725,43 +738,44 @@ async function submitDonationSlip() {
   submitBtn.innerHTML = "⏳ กำลังส่งหลักฐานและบวกยอดเงิน...";
 
   try {
-    // 1. บีบอัดรูปสลิปก่อนส่ง
     const compressedSlipBase64 = await compressAndResizeImage(fileInput.files[0]);
     const nowTimestamp = Date.now();
     
-    // แปลงวันที่ปัจจุบันให้เป็นฟอร์แมตภาษาไทยสำหรับตารางบัญชีรายรับ-รายจ่าย (ม.ค. - ธ.ค.)
     const dateObj = new Date();
     const thaiMonthsShort = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
     const formattedThaiDate = `${dateObj.getDate()} ${thaiMonthsShort[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
 
-    // 2. ส่งข้อมูลเข้าคิวสลิปหลังบ้าน (เก็บประวัติที่เดิม)
+    // 1. ส่งข้อมูลเข้าคิวสลิปหลังบ้าน
     await slipsCollectionRef.add({
+      donorName: donorNameVal || "",
       amount: amountVal,
       image: compressedSlipBase64,
       message: msgInput.value.trim(),
       timestamp: nowTimestamp
     });
 
-    // 3. แทรกข้อมูลตัวเดียวกันเข้าตารางบัญชี "รายรับ-รายจ่าย" ทันทีแบบอัตโนมัติ
-    let commentStr = "คุณผู้ใจดีร่วมบริจาค (สลิปส่งจากหน้าเว็บ)";
+    // 2. แทรกข้อมูลเข้าตารางบัญชี "รายรับ-รายจ่าย" อัตโนมัติ
+    let displayDonorName = donorNameVal ? `คุณ ${donorNameVal}` : "คุณผู้ใจดี";
+    let commentStr = `${displayDonorName} ร่วมบริจาค (สลิปส่งจากหน้าเว็บ)`;
+    
     if (msgInput.value.trim()) {
       commentStr += ` - "${msgInput.value.trim()}"`;
     }
 
     await financeCollectionRef.add({
       date: formattedThaiDate,
-      type: "income", // เป็นยอดเงินเข้า (รายรับ)
+      type: "income",
       amount: amountVal,
       detail: commentStr,
-      receiptImage: compressedSlipBase64, // แนบรูปสลิปเข้าไปเป็นหลักฐานในตารางรายรับทันที
+      receiptImage: compressedSlipBase64,
       timestamp: nowTimestamp
     });
 
-    // เคลียร์ค่าในช่องอินพุตทั้งหมด
+    nameInput.value = "";
     amtInput.value = "";
     fileInput.value = "";
     msgInput.value = "";
-    alert("💖 ระบบบันทึกยอดเงินและเพิ่มสลิปลงบัญชีเรียบร้อย ยอดบริจาครวมอัปเดตแล้ว ขอบคุณมากครับ!");
+    alert("💖 บันทึกยอดเงินในชื่อของคุณเรียบร้อยแล้ว ขอบคุณสำหรับความเมตตาแทนน้องแมวด้วยนะครับ!");
   } catch (error) {
     alert("เกิดข้อผิดพลาดในการส่งข้อมูล: " + error.message);
   } finally {
