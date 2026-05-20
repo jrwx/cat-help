@@ -476,6 +476,26 @@ const firebaseConfig = {
 };
 
   firebase.initializeApp(firebaseConfig);
+  firebase.auth().getRedirectResult()
+.then((result)=>{
+
+ if(result.user){
+
+   if(
+     allowedOwners.includes(
+       result.user.email
+     )
+   ){
+
+     document
+     .getElementById("ownerPanel")
+     .classList.remove("hidden");
+
+   }
+
+ }
+
+});
 
   // OWNER EMAIL
   const allowedOwners = [
@@ -497,7 +517,7 @@ const firebaseConfig = {
     try{
 
       const result =
-        await firebase.auth().signInWithPopup(provider);
+        await firebase.auth().signInWithRedirect(provider);
 
       const user = result.user;
 
