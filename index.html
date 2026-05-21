@@ -23,7 +23,6 @@
       background:rgba(255,255,255,.75);
       backdrop-filter:blur(12px);
     }
-    /* ปรับแต่ง Scrollbar ทุกกล่องให้สวยงาม กระชับ ไม่รกสายตา */
     .custom-scrollbar::-webkit-scrollbar {
       width: 6px;
       height: 6px;
@@ -39,7 +38,6 @@
     .custom-scrollbar::-webkit-scrollbar-thumb:hover {
       background: #94a3b8;
     }
-    /* เพิ่มลูกเล่นความสมูทตอนเลื่อนหน้าจอ */
     html {
       scroll-behavior: smooth;
     }
@@ -264,9 +262,9 @@
           <p class="text-xs text-red-400 bg-red-50 py-2 px-4 rounded-xl inline-block w-full font-medium">
             ⚠️ โอนแล้วรบกวนแนบหลักฐานสลิปด้านล่าง เพื่ออัปเดตสมุดบัญชีน้องแมวครับ
           </p>
-          <a href="#slipSection" class="inline-flex items-center justify-center gap-2 bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold w-full py-3 px-4 rounded-2xl transition shadow-sm border border-orange-200">
+          <button onclick="scrollToSlipForm()" class="inline-flex items-center justify-center gap-2 bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold w-full py-3 px-4 rounded-2xl transition shadow-sm border border-orange-200">
             📤 คลิกเพื่อแนบสลิปตรงนี้ได้เลย
-          </a>
+          </button>
         </div>
       </div>
     </div>
@@ -311,7 +309,7 @@
   </div>
 </section>
 
-<section id="slipSection" class="pb-20 scroll-mt-24">
+<section id="formSlipContainer" class="pb-20 scroll-mt-24">
   <div class="max-w-3xl mx-auto px-5">
     <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
       <div class="bg-orange-500 text-white p-6 text-center">
@@ -362,6 +360,17 @@
 </footer>
 
 <script>
+// ป้องกันหน้าจอกระตุก เลื่อนเด้งไปที่อื่นเมื่อเข้าเว็บครั้งแรก
+if ('scrollRestoration' in history) {
+  history.scrollRestoration = 'manual';
+}
+window.scrollTo(0, 0);
+
+function scrollToSlipForm() {
+  const el = document.getElementById("formSlipContainer");
+  if(el) el.scrollIntoView({ behavior: 'smooth' });
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyDLL5PYwQ3aHxeA-PszAh2x3mJxTUDXdpY",
   authDomain: "cat-help-18ffb.firebaseapp.com",
@@ -533,8 +542,13 @@ financeCollectionRef.onSnapshot((snapshot) => {
   document.getElementById("totalExpense").innerHTML = totalOut.toLocaleString() + " บาท";
   document.getElementById("balanceAmount").innerHTML = balance.toLocaleString() + " บาท";
 
-  // แก้จุดนี้: เรียงตาม timestamp ล่าสุดให้อยู่บนสุดเสมอ
-  globalFinanceItems.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  // แก้ไข Fallback ป้องกันประวัติเก่าที่ไม่มี Timestamp มารบกวนระบบการเรียงข้อมูลใหม่ล่าสุดขึ้นก่อน
+  globalFinanceItems.sort((a, b) => {
+    const tA = a.timestamp || 0;
+    const tB = b.timestamp || 0;
+    return tB - tA;
+  });
+  
   renderFinanceTable();
   
   if (!document.getElementById("expenseModal").classList.contains("hidden")) {
@@ -605,8 +619,12 @@ slipsCollectionRef.onSnapshot((snapshot) => {
     }
   });
   
-  // แก้จุดนี้: บังคับคิวตรวจสลิปให้แสดงอันใหม่ล่าสุดอยู่บนสุดเสมอ
-  slipDocs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  // แก้ไข Fallback ป้องกันสลิปเก่าที่มีปัญหาเรื่องเวลา รบกวนลำดับสลิปใหม่ล่าสุดที่จะแสดงบนสุด
+  slipDocs.sort((a, b) => {
+    const tA = a.timestamp || 0;
+    const tB = b.timestamp || 0;
+    return tB - tA;
+  });
 
   let html = "";
   slipDocs.forEach((slipData) => {
@@ -927,7 +945,6 @@ async function submitDonationSlip() {
       commentStr += ` - "${msgInput.value.trim()}"`;
     }
 
-    // แก้ไขจุดนี้: ผูก timestamp เข้าฐานข้อมูลให้ถูกตัวเพื่อให้โค้ดจัดเรียงเอาของใหม่ขึ้นก่อนได้แม่นยำ
     await financeCollectionRef.add({
       date: formattedThaiDate,
       type: "income",
@@ -974,7 +991,7 @@ async function toggleDonation(){
 function updateDonationUI(isOpen) {
   const statusBox = document.getElementById("statusBox");
   const qrBox = document.getElementById("qrBox");
-  const slipSection = document.getElementById("slipSection");
+  const slipSection = document.getElementById("formSlipContainer");
   const toggleBtn = document.getElementById("toggleBtn");
 
   if(isOpen){
