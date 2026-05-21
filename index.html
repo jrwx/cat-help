@@ -264,7 +264,7 @@
           <p class="text-xs text-red-400 bg-red-50 py-2 px-4 rounded-xl inline-block w-full font-medium">
             ⚠️ โอนแล้วรบกวนแนบหลักฐานสลิปด้านล่าง เพื่ออัปเดตสมุดบัญชีน้องแมวครับ
           </p>
-          <a href="#slipSection" class="inline-flex items-center justify-center gap-2 bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold w-full py-3 px-4 rounded-2xl transition shadow-sm border border-orange-200">
+          <a href="#slipSection" class="inline-flex items-center justify-center gap-2 bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold w-full py-3 px-4 rounded-2xl transition shadow-sm border border-orange-200 animate-pulse">
             📤 คลิกเพื่อแนบสลิปตรงนี้ได้เลย
           </a>
         </div>
@@ -362,6 +362,17 @@
 </footer>
 
 <script>
+if ('scrollRestoration' in history) {
+  history.scrollRestoration = 'manual';
+}
+window.scrollTo(0, 0);
+
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, 50);
+});
+
 const firebaseConfig = {
   apiKey: "AIzaSyDLL5PYwQ3aHxeA-PszAh2x3mJxTUDXdpY",
   authDomain: "cat-help-18ffb.firebaseapp.com",
@@ -400,6 +411,7 @@ function closeImageModal() {
   document.getElementById("modalTargetImage").src = "";
 }
 
+/* [เพิ่มใหม่] ฟังก์ชันเปิด-ปิด หน้าต่างป๊อปอัปรายจ่าย */
 function openExpenseModal() {
   renderExpenseModalTable();
   document.getElementById("expenseModal").classList.remove("hidden");
@@ -409,8 +421,10 @@ function closeExpenseModal() {
   document.getElementById("expenseModal").classList.add("hidden");
 }
 
+/* [เพิ่มใหม่] ฟังก์ชันกรองและวาดตารางรายจ่ายลงในป๊อปอัป */
 function renderExpenseModalTable() {
   const tableBody = document.getElementById("expenseModalTableBody");
+  // กรองเอาเฉพาะประเภท expense (รายจ่าย)
   const expenseItems = globalFinanceItems.filter(item => item.type === "expense");
 
   if (expenseItems.length === 0) {
@@ -426,11 +440,14 @@ function renderExpenseModalTable() {
       ? `<button onclick="openImageModal('finance_${item.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2.5 py-1 rounded-xl text-xs transition flex items-center gap-1 mx-auto">📸 ดูหลักฐาน</button>`
       : `<span class="text-gray-300 text-xs">- ไม่มี -</span>`;
 
-    let detailDisplay = item.detail || "-";
+    let detailDisplay = item.detail;
+    if (item.receiptImage && !detailDisplay.includes("[ ทางบ้าน ]")) {
+      detailDisplay = `<span class="inline-block bg-slate-600 text-white text-[11px] font-bold px-1.5 py-0.5 rounded mr-1.5 tracking-wide shadow-sm">[ ทางบ้าน ]</span> ` + detailDisplay;
+    }
 
     html += `
       <tr class="hover:bg-red-50/30 transition text-sm md:text-base">
-        <td class="p-4 font-medium text-gray-500 whitespace-nowrap">${item.date || "-"}</td>
+        <td class="p-4 font-medium text-gray-500 whitespace-nowrap">${item.date}</td>
         <td class="p-4 text-gray-800 font-medium break-all align-middle">${detailDisplay}</td>
         <td class="p-4 text-center align-middle">${receiptHtml}</td>
         <td class="p-4 text-right text-red-500 font-bold align-middle">-${amtStr}</td>
@@ -484,11 +501,14 @@ function renderFinanceTable() {
         </td>`
       : "";
 
-    let detailDisplay = item.detail || "-";
+    let detailDisplay = item.detail;
+    if (item.receiptImage && !detailDisplay.includes("[ ทางบ้าน ]")) {
+      detailDisplay = `<span class="inline-block bg-slate-600 text-white text-[11px] font-bold px-1.5 py-0.5 rounded mr-1.5 tracking-wide shadow-sm">[ ทางบ้าน ]</span> ` + detailDisplay;
+    }
 
     html += `
       <tr class="hover:bg-orange-50/30 transition text-sm md:text-base">
-        <td class="p-4 font-medium text-gray-500 whitespace-nowrap">${item.date || "-"}</td>
+        <td class="p-4 font-medium text-gray-500 whitespace-nowrap">${item.date}</td>
         <td class="p-4 text-gray-800 font-medium break-all align-middle">${detailDisplay}</td>
         <td class="p-4 text-center align-middle">${receiptHtml}</td>
         <td class="p-4 text-right text-green-600 font-bold align-middle">${isIncome ? '+' + amtStr : '-'}</td>
@@ -504,14 +524,6 @@ financeCollectionRef.onSnapshot((snapshot) => {
   let totalIn = 0;
   let totalOut = 0;
   globalFinanceItems = [];
-
-  if (snapshot.empty) {
-    document.getElementById("totalDonation").innerHTML = "0 บาท";
-    document.getElementById("totalExpense").innerHTML = "0 บาท";
-    document.getElementById("balanceAmount").innerHTML = "0 บาท";
-    renderFinanceTable();
-    return;
-  }
 
   snapshot.forEach((doc) => {
     const data = doc.data();
@@ -536,6 +548,7 @@ financeCollectionRef.onSnapshot((snapshot) => {
   globalFinanceItems.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   renderFinanceTable();
   
+  // อัปเดตข้อมูลตารางใน Modal แบบเรียลไทม์ด้วย (หากเปิดค้างไว้)
   if (!document.getElementById("expenseModal").classList.contains("hidden")) {
     renderExpenseModalTable();
   }
@@ -561,12 +574,6 @@ logsCollectionRef.onSnapshot(async (snapshot) => {
   const docs = [];
   const fetchPromises = [];
   
-  if (snapshot.empty) {
-    globalTimelineItems = [];
-    renderTimelineFromDocs();
-    return;
-  }
-
   snapshot.forEach((doc) => {
     const logData = { id: doc.id, ...doc.data(), imagesArray: [] };
     docs.push(logData);
@@ -613,16 +620,21 @@ slipsCollectionRef.onSnapshot((snapshot) => {
     const amtStr = slipData.amount ? Number(slipData.amount).toLocaleString() + " บาท" : "ไม่ระบุ";
     const donorName = slipData.donorName ? slipData.donorName : 'คุณผู้ใจดี';
 
+    const fromHomeBadge = slipData.image 
+      ? `<div class="mb-1"><span class="inline-block bg-slate-600 text-white text-[11px] font-bold px-2 py-0.5 rounded tracking-wide shadow-sm">[ ทางบ้าน ]</span></div>`
+      : "";
+
     const receiptHtml = slipData.image 
       ? `<button onclick="openImageModal('${docId}')" class="block focus:outline-none" title="คลิกเพื่อขยายรูปสลิป">
             <img src="${slipData.image}" class="w-16 h-20 object-cover rounded-lg border border-slate-200 shadow-sm hover:scale-110 cursor-zoom-in transition" />
          </button>`
-      : `<span class="text-xs text-gray-400 font-medium">-</span>`;
+      : `<span class="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded font-semibold border border-orange-200">Owner บันทึกตรง</span>`;
 
     html += `
       <tr class="hover:bg-slate-50 transition">
         <td class="p-3 text-gray-600 font-medium whitespace-nowrap">${dateStr}</td>
         <td class="p-3 text-gray-800 font-semibold align-middle">
+          ${fromHomeBadge}
           <div class="text-gray-900">${donorName}</div>
         </td>
         <td class="p-3 text-green-600 font-bold whitespace-nowrap">${amtStr}</td>
@@ -723,10 +735,10 @@ function renderTimelineFromDocs() {
     html += `
       <div class="bg-orange-50 rounded-2xl p-5 border border-orange-100 space-y-3 transition hover:shadow-md relative">
         <div class="flex justify-between items-center">
-          <span class="text-orange-500 font-bold text-sm bg-orange-100 px-3 py-1 rounded-full">📅 ${log.date || "-"}</span>
+          <span class="text-orange-500 font-bold text-sm bg-orange-100 px-3 py-1 rounded-full">📅 ${log.date}</span>
           ${deleteBtnHtml}
         </div>
-        <p class="text-gray-700 text-base leading-relaxed whitespace-pre-line">${log.content || ""}</p>
+        <p class="text-gray-700 text-base leading-relaxed whitespace-pre-line">${log.content}</p>
         ${imagesHtml}
       </div>
     `;
@@ -915,9 +927,9 @@ async function submitDonationSlip() {
       timestamp: nowTimestamp
     });
 
-    let displayDonorName = donorNameVal ? `คุณ ${donorNameVal}` : "ผู้ไม่ประสงค์ออกนาม";
+    let displayDonorName = donorNameVal ? `คุณ ${donorNameVal}` : "คุณผู้ใจดี";
     if (isOwnerLoggedIn && !hasFile) {
-      displayDonorName = "ผู้ไม่ประสงค์ออกนาม";
+      displayDonorName = "Owner (บันทึกแทน)";
     }
     
     let commentStr = `${displayDonorName} ร่วมบริจาค `;
