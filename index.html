@@ -8,7 +8,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght=300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -264,7 +264,7 @@
           <p class="text-xs text-red-400 bg-red-50 py-2 px-4 rounded-xl inline-block w-full font-medium">
             ⚠️ โอนแล้วรบกวนแนบหลักฐานสลิปด้านล่าง เพื่ออัปเดตสมุดบัญชีน้องแมวครับ
           </p>
-          <a href="#slipSection" class="inline-flex items-center justify-center gap-2 bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold w-full py-3 px-4 rounded-2xl transition shadow-sm border border-orange-200 animate-pulse">
+          <a href="#slipSection" class="inline-flex items-center justify-center gap-2 bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold w-full py-3 px-4 rounded-2xl transition shadow-sm border border-orange-200">
             📤 คลิกเพื่อแนบสลิปตรงนี้ได้เลย
           </a>
         </div>
@@ -362,17 +362,6 @@
 </footer>
 
 <script>
-if ('scrollRestoration' in history) {
-  history.scrollRestoration = 'manual';
-}
-window.scrollTo(0, 0);
-
-window.addEventListener('load', () => {
-  setTimeout(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }, 50);
-});
-
 const firebaseConfig = {
   apiKey: "AIzaSyDLL5PYwQ3aHxeA-PszAh2x3mJxTUDXdpY",
   authDomain: "cat-help-18ffb.firebaseapp.com",
@@ -437,11 +426,11 @@ function renderExpenseModalTable() {
       ? `<button onclick="openImageModal('finance_${item.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2.5 py-1 rounded-xl text-xs transition flex items-center gap-1 mx-auto">📸 ดูหลักฐาน</button>`
       : `<span class="text-gray-300 text-xs">- ไม่มี -</span>`;
 
-    let detailDisplay = item.detail;
+    let detailDisplay = item.detail || "-";
 
     html += `
       <tr class="hover:bg-red-50/30 transition text-sm md:text-base">
-        <td class="p-4 font-medium text-gray-500 whitespace-nowrap">${item.date}</td>
+        <td class="p-4 font-medium text-gray-500 whitespace-nowrap">${item.date || "-"}</td>
         <td class="p-4 text-gray-800 font-medium break-all align-middle">${detailDisplay}</td>
         <td class="p-4 text-center align-middle">${receiptHtml}</td>
         <td class="p-4 text-right text-red-500 font-bold align-middle">-${amtStr}</td>
@@ -495,11 +484,11 @@ function renderFinanceTable() {
         </td>`
       : "";
 
-    let detailDisplay = item.detail;
+    let detailDisplay = item.detail || "-";
 
     html += `
       <tr class="hover:bg-orange-50/30 transition text-sm md:text-base">
-        <td class="p-4 font-medium text-gray-500 whitespace-nowrap">${item.date}</td>
+        <td class="p-4 font-medium text-gray-500 whitespace-nowrap">${item.date || "-"}</td>
         <td class="p-4 text-gray-800 font-medium break-all align-middle">${detailDisplay}</td>
         <td class="p-4 text-center align-middle">${receiptHtml}</td>
         <td class="p-4 text-right text-green-600 font-bold align-middle">${isIncome ? '+' + amtStr : '-'}</td>
@@ -515,6 +504,14 @@ financeCollectionRef.onSnapshot((snapshot) => {
   let totalIn = 0;
   let totalOut = 0;
   globalFinanceItems = [];
+
+  if (snapshot.empty) {
+    document.getElementById("totalDonation").innerHTML = "0 บาท";
+    document.getElementById("totalExpense").innerHTML = "0 บาท";
+    document.getElementById("balanceAmount").innerHTML = "0 บาท";
+    renderFinanceTable();
+    return;
+  }
 
   snapshot.forEach((doc) => {
     const data = doc.data();
@@ -564,6 +561,12 @@ logsCollectionRef.onSnapshot(async (snapshot) => {
   const docs = [];
   const fetchPromises = [];
   
+  if (snapshot.empty) {
+    globalTimelineItems = [];
+    renderTimelineFromDocs();
+    return;
+  }
+
   snapshot.forEach((doc) => {
     const logData = { id: doc.id, ...doc.data(), imagesArray: [] };
     docs.push(logData);
@@ -610,11 +613,6 @@ slipsCollectionRef.onSnapshot((snapshot) => {
     const amtStr = slipData.amount ? Number(slipData.amount).toLocaleString() + " บาท" : "ไม่ระบุ";
     const donorName = slipData.donorName ? slipData.donorName : 'คุณผู้ใจดี';
 
-    // ตรวจสอบเงื่อนไขว่าส่งมาจากทางบ้านหรือไม่ ถ้าใช่ให้ครอบด้วยสไตล์แถบสีเทาเข้มขึ้นมานิดนึงแบบซอฟต์ ๆ
-    const nameDisplayHtml = slipData.isFromHome
-      ? `<div class="bg-slate-100/80 text-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 inline-block font-semibold shadow-sm">${donorName}</div>`
-      : `<div class="text-gray-900 font-semibold">${donorName}</div>`;
-
     const receiptHtml = slipData.image 
       ? `<button onclick="openImageModal('${docId}')" class="block focus:outline-none" title="คลิกเพื่อขยายรูปสลิป">
             <img src="${slipData.image}" class="w-16 h-20 object-cover rounded-lg border border-slate-200 shadow-sm hover:scale-110 cursor-zoom-in transition" />
@@ -624,8 +622,8 @@ slipsCollectionRef.onSnapshot((snapshot) => {
     html += `
       <tr class="hover:bg-slate-50 transition">
         <td class="p-3 text-gray-600 font-medium whitespace-nowrap">${dateStr}</td>
-        <td class="p-3 align-middle">
-          ${nameDisplayHtml}
+        <td class="p-3 text-gray-800 font-semibold align-middle">
+          <div class="text-gray-900">${donorName}</div>
         </td>
         <td class="p-3 text-green-600 font-bold whitespace-nowrap">${amtStr}</td>
         <td class="p-3 align-middle">${receiptHtml}</td>
@@ -673,8 +671,7 @@ async function addNewTransaction() {
       amount: amount,
       detail: detail,
       receiptImage: receiptBase64,
-      timestamp: dateObj.getTime(),
-      isFromHome: false // ทำรายการตรงโดยเจ้าของ
+      timestamp: dateObj.getTime()
     });
 
     document.getElementById("transAmount").value = "";
@@ -726,10 +723,10 @@ function renderTimelineFromDocs() {
     html += `
       <div class="bg-orange-50 rounded-2xl p-5 border border-orange-100 space-y-3 transition hover:shadow-md relative">
         <div class="flex justify-between items-center">
-          <span class="text-orange-500 font-bold text-sm bg-orange-100 px-3 py-1 rounded-full">📅 ${log.date}</span>
+          <span class="text-orange-500 font-bold text-sm bg-orange-100 px-3 py-1 rounded-full">📅 ${log.date || "-"}</span>
           ${deleteBtnHtml}
         </div>
-        <p class="text-gray-700 text-base leading-relaxed whitespace-pre-line">${log.content}</p>
+        <p class="text-gray-700 text-base leading-relaxed whitespace-pre-line">${log.content || ""}</p>
         ${imagesHtml}
       </div>
     `;
@@ -877,4 +874,121 @@ async function deleteConditionLog(logId) {
 
 async function submitDonationSlip() {
   const nameInput = document.getElementById("slipDonorNameInput");
-  const amtInput = document.getElementById
+  const amtInput = document.getElementById("slipAmountInput");
+  const fileInput = document.getElementById("slipFileInput");
+  const msgInput = document.getElementById("slipMessageInput");
+  const submitBtn = document.getElementById("submitSlipBtn");
+
+  const amountVal = Number(amtInput.value);
+  const donorNameVal = nameInput.value.trim();
+
+  if (!amtInput.value || amountVal <= 0) {
+    alert("❌ กรุณาระบุจำนวนเงินให้ถูกต้อง");
+    return;
+  }
+
+  const hasFile = fileInput.files && fileInput.files.length > 0;
+  if (!isOwnerLoggedIn && !hasFile) {
+    alert("❌ กรุณาเลือกไฟล์รูปภาพหลักฐานสลิปด้วยครับ");
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = "⏳ กำลังส่งหลักฐาน...";
+
+  try {
+    let compressedSlipBase64 = null;
+    if (hasFile) {
+      compressedSlipBase64 = await compressAndResizeImage(fileInput.files[0]);
+    }
+    
+    const nowTimestamp = Date.now();
+    const dateObj = new Date();
+    const thaiMonthsShort = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+    const formattedThaiDate = `${dateObj.getDate()} ${thaiMonthsShort[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
+
+    await slipsCollectionRef.add({
+      donorName: donorNameVal || "",
+      amount: amountVal,
+      image: compressedSlipBase64, 
+      message: msgInput.value.trim(),
+      timestamp: nowTimestamp
+    });
+
+    let displayDonorName = donorNameVal ? `คุณ ${donorNameVal}` : "ผู้ไม่ประสงค์ออกนาม";
+    if (isOwnerLoggedIn && !hasFile) {
+      displayDonorName = "ผู้ไม่ประสงค์ออกนาม";
+    }
+    
+    let commentStr = `${displayDonorName} ร่วมบริจาค `;
+    if (msgInput.value.trim()) {
+      commentStr += ` - "${msgInput.value.trim()}"`;
+    }
+
+    await financeCollectionRef.add({
+      date: formattedThaiDate,
+      type: "income",
+      amount: amountVal,
+      detail: commentStr,
+      receiptImage: compressedSlipBase64,
+      timestamp: nowTimestamp
+    });
+
+    nameInput.value = "";
+    amtInput.value = "";
+    fileInput.value = "";
+    msgInput.value = "";
+    alert("💖 บันทึกรายการบริจาคเข้าสู่ระบบเรียบร้อยแล้วครับ!");
+  } catch (error) {
+    alert("เกิดข้อผิดพลาดในการส่งข้อมูล: " + error.message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = "ส่งสลิปเพื่อร่วมช่วยน้อง 💖";
+  }
+}
+
+async function deleteSlip(docId) {
+  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
+  if (confirm("ต้องการลบสลิปนี้ออกจากคิวตรวจสอบใช่ไหม?")) {
+    try {
+      await slipsCollectionRef.doc(docId).delete();
+      alert("ลบรายการสลิปเรียบร้อย");
+    } catch (error) {
+      alert("ไม่สามารถลบสลิปได้: " + error.message);
+    }
+  }
+}
+
+async function toggleDonation(){
+  if (!isOwnerLoggedIn) return alert("กรุณาล็อกอินก่อนทำรายการ");
+  try {
+    await liveDataRef.update({ donationOpen: !donationOpen });
+  } catch (error) {
+    alert("ไม่สามารถเปลี่ยนสถานะได้: " + error.message);
+  }
+}
+
+function updateDonationUI(isOpen) {
+  const statusBox = document.getElementById("statusBox");
+  const qrBox = document.getElementById("qrBox");
+  const slipSection = document.getElementById("slipSection");
+  const toggleBtn = document.getElementById("toggleBtn");
+
+  if(isOpen){
+    statusBox.innerHTML = "💖 เปิดรับบริจาคอยู่";
+    statusBox.className = "mt-8 inline-flex items-center gap-3 bg-green-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
+    if(qrBox) qrBox.style.display = "block";
+    if(slipSection) slipSection.style.display = "block";
+    toggleBtn.innerHTML = "🔴 ปิดรับบริจาคชั่วคราว";
+  }else{
+    statusBox.innerHTML = "🙏 ปิดรับบริจาคชั่วคราว";
+    statusBox.className = "mt-8 inline-flex items-center gap-3 bg-gray-500 px-6 py-3 rounded-full text-lg font-semibold shadow-2xl";
+    if(qrBox) qrBox.style.display = "none";
+    if(slipSection) slipSection.style.display = "none";
+    toggleBtn.innerHTML = "🟢 เปิดรับบริจาคอีกครั้ง";
+  }
+}
+</script>
+
+</body>
+</html>
