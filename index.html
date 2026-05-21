@@ -83,11 +83,14 @@
 
 <section class="max-w-6xl mx-auto px-5 -mt-24 relative z-20">
   <div class="grid md:grid-cols-3 gap-6">
-    <div class="bg-white rounded-3xl shadow-xl p-8 text-center">
-      <div class="text-5xl mb-4">💰</div>
-      <div class="text-gray-500 text-lg">ยอดบริจาคทั้งหมด (รายรับ)</div>
-      <div id="totalDonation" class="text-4xl font-bold mt-4 text-orange-500">0 บาท</div>
+    <div onclick="openIncomeModal()" class="bg-white rounded-3xl shadow-xl p-8 text-center cursor-pointer hover:scale-105 transition duration-300 transform border border-transparent hover:border-emerald-200 group">
+      <div class="text-5xl mb-4 group-hover:animate-bounce">💰</div>
+      <div class="text-gray-500 text-lg flex items-center justify-center gap-1">
+        ยอดบริจาคทั้งหมด (รายรับ) <span class="text-xs bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full font-bold">🔍 คลิกดู</span>
+      </div>
+      <div id="totalDonation" class="text-4xl font-bold mt-4 text-emerald-600">0 บาท</div>
     </div>
+    
     <div onclick="openExpenseModal()" class="bg-white rounded-3xl shadow-xl p-8 text-center cursor-pointer hover:scale-105 transition duration-300 transform border border-transparent hover:border-red-200 group">
       <div class="text-5xl mb-4 group-hover:animate-bounce">🏥</div>
       <div class="text-gray-500 text-lg flex items-center justify-center gap-1">
@@ -95,6 +98,7 @@
       </div>
       <div id="totalExpense" class="text-4xl font-bold mt-4 text-red-500">0 บาท</div>
     </div>
+    
     <div class="bg-white rounded-3xl shadow-xl p-8 text-center">
       <div class="text-5xl mb-4">🐾</div>
       <div class="text-gray-500 text-lg">เงินคงเหลือ</div>
@@ -102,6 +106,40 @@
     </div>
   </div>
 </section>
+
+<div id="incomeModal" class="hidden fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeIncomeModal()">
+  <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden border border-emerald-100 transform transition duration-300 scale-100 flex flex-col max-h-[85vh]" onclick="event.stopPropagation()">
+    <div class="bg-emerald-600 p-6 flex justify-between items-center flex-none text-white">
+      <div>
+        <h3 class="text-2xl font-bold flex items-center gap-2">💰 รายละเอียดการร่วมบริจาค (รายรับ)</h3>
+        <p class="text-sm text-white/80 mt-1">รายชื่อผู้ใจดีและรายการโอนเงินร่วมทำบุญช่วยเหลือน้องแมวทั้งหมด</p>
+      </div>
+      <button onclick="closeIncomeModal()" class="bg-white/20 hover:bg-white/30 text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-lg transition">✕</button>
+    </div>
+    <div class="p-6 overflow-y-auto flex-1 custom-scrollbar">
+      <div class="overflow-x-auto border border-gray-100 rounded-2xl">
+        <table class="w-full text-left border-collapse bg-white">
+          <thead class="sticky top-0 bg-emerald-50 z-10 shadow-sm">
+            <tr class="text-emerald-800 text-base border-b border-emerald-200">
+              <th class="p-4 font-semibold">วันที่</th>
+              <th class="p-4 font-semibold">ชื่อผู้บริจาค/รายละเอียด</th>
+              <th class="p-4 font-semibold text-center">หลักฐาน</th>
+              <th class="p-4 font-semibold text-right">จำนวนเงิน</th>
+            </tr>
+          </thead>
+          <tbody id="incomeModalTableBody" class="text-base divide-y divide-gray-100">
+            <tr>
+              <td colspan="4" class="p-4 text-center text-gray-400">กำลังโหลดรายการรายรับ...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="p-4 bg-gray-50 border-t border-gray-100 text-right flex-none">
+      <button onclick="closeIncomeModal()" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-6 py-2.5 rounded-xl transition shadow">ปิดหน้าต่าง</button>
+    </div>
+  </div>
+</div>
 
 <div id="expenseModal" class="hidden fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeExpenseModal()">
   <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden border border-red-100 transform transition duration-300 scale-100 flex flex-col max-h-[85vh]" onclick="event.stopPropagation()">
@@ -360,7 +398,6 @@
 </footer>
 
 <script>
-// ป้องกันหน้าจอกระตุก เลื่อนเด้งไปที่อื่นเมื่อเข้าเว็บครั้งแรก
 if ('scrollRestoration' in history) {
   history.scrollRestoration = 'manual';
 }
@@ -409,6 +446,17 @@ function closeImageModal() {
   document.getElementById("modalTargetImage").src = "";
 }
 
+// ฟังก์ชันเปิด/ปิด หน้าต่างยอดบริจาค (รายรับ)
+function openIncomeModal() {
+  renderIncomeModalTable();
+  document.getElementById("incomeModal").classList.remove("hidden");
+}
+
+function closeIncomeModal() {
+  document.getElementById("incomeModal").classList.add("hidden");
+}
+
+// ฟังก์ชันเปิด/ปิด หน้าต่างค่ารักษา (รายจ่าย)
 function openExpenseModal() {
   renderExpenseModalTable();
   document.getElementById("expenseModal").classList.remove("hidden");
@@ -418,6 +466,39 @@ function closeExpenseModal() {
   document.getElementById("expenseModal").classList.add("hidden");
 }
 
+// เรนเดอร์ตารางประวัติการร่วมบริจาค (รายรับ)
+function renderIncomeModalTable() {
+  const tableBody = document.getElementById("incomeModalTableBody");
+  const incomeItems = globalFinanceItems.filter(item => item.type === "income");
+
+  if (incomeItems.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">ยังไม่มีรายการบันทึกรายรับในขณะนี้</td></tr>`;
+    return;
+  }
+
+  let html = "";
+  incomeItems.forEach((item) => {
+    const amtStr = Number(item.amount || 0).toLocaleString() + " บาท";
+    
+    const receiptHtml = item.receiptImage
+      ? `<button onclick="openImageModal('finance_${item.id}')" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold px-2.5 py-1 rounded-xl text-xs transition flex items-center gap-1 mx-auto">📸 ดูหลักฐาน</button>`
+      : `<span class="text-gray-300 text-xs">- ไม่มี -</span>`;
+
+    let detailDisplay = item.detail || "คุณผู้ใจดีร่วมบริจาค";
+
+    html += `
+      <tr class="hover:bg-emerald-50/30 transition text-sm md:text-base">
+        <td class="p-4 font-medium text-gray-500 whitespace-nowrap">${item.date || "-"}</td>
+        <td class="p-4 text-gray-800 font-semibold break-all align-middle">${detailDisplay}</td>
+        <td class="p-4 text-center align-middle">${receiptHtml}</td>
+        <td class="p-4 text-right text-green-600 font-bold align-middle">+${amtStr}</td>
+      </tr>
+    `;
+  });
+  tableBody.innerHTML = html;
+}
+
+// เรนเดอร์ตารางประวัติค่ารักษา (รายจ่าย)
 function renderExpenseModalTable() {
   const tableBody = document.getElementById("expenseModalTableBody");
   const expenseItems = globalFinanceItems.filter(item => item.type === "expense");
@@ -542,7 +623,6 @@ financeCollectionRef.onSnapshot((snapshot) => {
   document.getElementById("totalExpense").innerHTML = totalOut.toLocaleString() + " บาท";
   document.getElementById("balanceAmount").innerHTML = balance.toLocaleString() + " บาท";
 
-  // แก้ไข Fallback ป้องกันประวัติเก่าที่ไม่มี Timestamp มารบกวนระบบการเรียงข้อมูลใหม่ล่าสุดขึ้นก่อน
   globalFinanceItems.sort((a, b) => {
     const tA = a.timestamp || 0;
     const tB = b.timestamp || 0;
@@ -551,6 +631,10 @@ financeCollectionRef.onSnapshot((snapshot) => {
   
   renderFinanceTable();
   
+  // อัปเดตข้อมูล Realtime ลงตาราง Popup รายรับ-รายจ่าย หากกำลังเปิดหน้าต่างค้างอยู่
+  if (!document.getElementById("incomeModal").classList.contains("hidden")) {
+    renderIncomeModalTable();
+  }
   if (!document.getElementById("expenseModal").classList.contains("hidden")) {
     renderExpenseModalTable();
   }
@@ -619,7 +703,6 @@ slipsCollectionRef.onSnapshot((snapshot) => {
     }
   });
   
-  // แก้ไข Fallback ป้องกันสลิปเก่าที่มีปัญหาเรื่องเวลา รบกวนลำดับสลิปใหม่ล่าสุดที่จะแสดงบนสุด
   slipDocs.sort((a, b) => {
     const tA = a.timestamp || 0;
     const tB = b.timestamp || 0;
